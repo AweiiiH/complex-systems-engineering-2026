@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>轮腿式无人作战平台 · 六层系统架构 | 复杂系统工程 · 小组作业 01</title>
+<style>
+  :root{
+    --bg:#070b10; --bg2:#0b1118; --panel:#0d1420; --panel2:#101a29;
+    --ink:#d7e2e6; --muted:#5f7280; --dim:#3c4c5a;
+    --line:rgba(90,140,160,.16); --grid:rgba(80,130,150,.07);
+    --neon:#3ef29b; --neon-dim:rgba(62,242,155,.35); --neon-soft:rgba(62,242,155,.08);
+    --amber:#ffb454; --cyan:#4fd8ff; --alert:#ff5a5a;
+    --serif:"Songti SC","Noto Serif SC","STSong",Georgia,serif;
+    --sans:"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
+    --mono:"SF Mono","JetBrains Mono","Cascadia Code",Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.8;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  ::selection{background:var(--neon);color:#04120b}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 32px;position:relative}
+
+  /* 全局网格 + 扫描线氛围 */
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background-image:
+    linear-gradient(var(--grid) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:48px 48px}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.35;
+    background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.14) 3px 4px)}
+
+  #progress{position:fixed;top:0;left:0;height:2px;background:var(--neon);width:0;z-index:120;box-shadow:0 0 8px var(--neon-dim)}
+
+  /* ---------- 状态跑马灯 ---------- */
+  .ticker{background:var(--bg2);border-bottom:1px solid var(--line);overflow:hidden;position:sticky;top:0;z-index:95;height:26px;display:flex;align-items:center}
+  .ticker .tk{white-space:nowrap;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--dim);animation:tick 28s linear infinite}
+  .ticker .tk b{color:var(--neon);font-weight:500}
+  .ticker .tk i{color:var(--amber);font-style:normal}
+  @keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  /* ---------- nav ---------- */
+  nav{position:sticky;top:26px;z-index:90;background:rgba(7,11,16,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:58px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .dot{width:8px;height:8px;border-radius:50%;background:var(--neon);box-shadow:0 0 10px var(--neon-dim);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .brand .zh{font-family:var(--serif);font-weight:600;font-size:16px;letter-spacing:1px}
+  .brand .en{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
+  nav .links a{color:var(--muted);text-decoration:none;font-family:var(--mono);font-size:12px;margin-left:26px;letter-spacing:1px;transition:color .2s}
+  nav .links a:hover{color:var(--neon);text-shadow:0 0 8px var(--neon-dim)}
+
+  /* ---------- hero ---------- */
+  header{position:relative;padding:96px 0 84px;border-bottom:1px solid var(--line);overflow:hidden}
+  header .halo{position:absolute;left:50%;top:-160px;width:640px;height:640px;transform:translateX(-50%);
+    background:radial-gradient(circle,var(--neon-soft) 0%,transparent 62%);pointer-events:none}
+  .hero{display:grid;grid-template-columns:1fr 300px;gap:56px;align-items:center}
+  .hero .kicker{font-family:var(--mono);font-size:11px;letter-spacing:4px;color:var(--neon);text-transform:uppercase;display:flex;align-items:center;gap:14px;margin-bottom:24px}
+  .hero .kicker::before{content:"";width:34px;height:1px;background:var(--neon);box-shadow:0 0 6px var(--neon-dim)}
+  .hero h1{font-family:var(--serif);font-size:48px;font-weight:600;line-height:1.3;letter-spacing:2px;color:#eef6f2;text-shadow:0 0 24px rgba(62,242,155,.14)}
+  .hero h1 em{font-style:normal;color:var(--neon)}
+  .hero .chain{font-family:var(--mono);font-size:13px;letter-spacing:2px;color:var(--muted);margin-top:24px;border:1px solid var(--line);display:inline-block;padding:9px 18px;background:rgba(13,20,32,.7)}
+  .hero .chain b{color:var(--neon);font-weight:500}
+  .hero .lede{font-size:15px;color:#8fa1ab;max-width:640px;margin-top:20px}
+  .hero .foot-meta{display:flex;gap:32px;margin-top:40px;font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;flex-wrap:wrap}
+  .hero .foot-meta span b{color:var(--amber);font-weight:500}
+
+  /* 雷达 */
+  .radar{position:relative;width:280px;height:280px;justify-self:center}
+  .radar .ring{position:absolute;inset:0;border:1px solid var(--line);border-radius:50%}
+  .radar .ring:nth-child(1){inset:0}
+  .radar .ring:nth-child(2){inset:36px}
+  .radar .ring:nth-child(3){inset:72px}
+  .radar .ring:nth-child(4){inset:108px}
+  .radar .cross-h{position:absolute;top:50%;left:0;right:0;height:1px;background:var(--line)}
+  .radar .cross-v{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line)}
+  .radar .sweep{position:absolute;inset:0;border-radius:50%;
+    background:conic-gradient(from 0deg,rgba(62,242,155,.4) 0deg,rgba(62,242,155,.06) 46deg,transparent 70deg,transparent 360deg);
+    animation:sweep 4s linear infinite;filter:blur(.4px)}
+  @keyframes sweep{to{transform:rotate(360deg)}}
+  .radar .core{position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-4px;border-radius:50%;background:var(--neon);box-shadow:0 0 14px var(--neon)}
+  .radar .blip{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--amber);box-shadow:0 0 10px rgba(255,180,84,.7);animation:pulse 3s infinite}
+  .radar .blip.b1{left:66%;top:28%}
+  .radar .blip.b2{left:30%;top:62%;animation-delay:1.2s}
+  .radar .blip.b3{left:58%;top:74%;animation-delay:2.1s}
+  .radar .label{position:absolute;font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase}
+  .radar .label.l1{left:0;top:-20px;color:var(--neon)}
+  .radar .label.l2{right:0;bottom:-20px}
+  .radar .corner{position:absolute;width:14px;height:14px;border-color:var(--neon-dim);border-style:solid;border-width:0}
+  .radar .corner.c1{left:-12px;top:-12px;border-top-width:1px;border-left-width:1px}
+  .radar .corner.c2{right:-12px;top:-12px;border-top-width:1px;border-right-width:1px}
+  .radar .corner.c3{left:-12px;bottom:-12px;border-bottom-width:1px;border-left-width:1px}
+  .radar .corner.c4{right:-12px;bottom:-12px;border-bottom-width:1px;border-right-width:1px}
+
+  /* ---------- stepper ---------- */
+  .stepper-bar{background:rgba(11,17,24,.9);border-bottom:1px solid var(--line)}
+  .stepper{display:flex}
+  .step{flex:1;padding:18px 6px 16px;text-align:center;cursor:pointer;border-right:1px solid var(--line);transition:background .25s;position:relative}
+  .step:last-child{border-right:none}
+  .step::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:transparent;transition:all .25s}
+  .step:hover{background:var(--neon-soft)}
+  .step .no{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--dim)}
+  .step .name{font-family:var(--serif);font-size:18px;font-weight:600;margin-top:4px;color:#b9c6cd}
+  .step .en{font-family:var(--mono);font-size:8.5px;letter-spacing:1.5px;color:var(--dim);margin-top:2px;text-transform:uppercase}
+  .step.active{background:var(--neon-soft)}
+  .step.active::after{background:var(--neon);box-shadow:0 0 8px var(--neon-dim)}
+  .step.active .name,.step.active .no{color:var(--neon)}
+
+  /* ---------- levels ---------- */
+  section.level{padding:84px 0;border-bottom:1px solid var(--line);position:relative;z-index:1}
+  .lv-head{display:flex;align-items:flex-end;gap:26px}
+  .lv-num{font-family:var(--mono);font-size:84px;font-weight:600;line-height:.82;color:transparent;-webkit-text-stroke:1px rgba(90,140,160,.3);user-select:none}
+  .lv-tag{font-family:var(--mono);font-size:10.5px;letter-spacing:3px;text-transform:uppercase;display:inline-flex;align-items:center;gap:10px}
+  .lv-tag::before{content:"◈";font-size:12px}
+  .lv-head h2{font-family:var(--serif);font-size:29px;font-weight:600;margin-top:8px;letter-spacing:1px;color:#eef6f2}
+  .lv-head .en{font-size:12px;color:var(--muted);margin-top:6px;letter-spacing:1px}
+  .lv-desc{font-size:15px;color:#9fb0ba;max-width:800px;margin:22px 0 36px}
+  .lv-desc b{color:var(--neon);font-weight:600}
+
+  /* HUD 切角卡片 */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(256px,1fr));gap:14px}
+  .cell{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);padding:24px 24px 22px;position:relative;transition:border-color .25s,transform .25s,box-shadow .25s;clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))}
+  .cell:hover{border-color:var(--neon-dim);transform:translateY(-3px);box-shadow:0 8px 30px rgba(62,242,155,.08)}
+  .cell .idx{font-family:var(--mono);font-size:9.5px;letter-spacing:2px;color:var(--dim)}
+  .cell h3{font-family:var(--serif);font-size:17px;font-weight:600;margin:10px 0 8px;color:#e7efe9}
+  .cell p{font-size:13px;color:var(--muted);line-height:1.75}
+  .cell::before{content:"";position:absolute;top:0;left:0;width:34px;height:2px;background:var(--neon);box-shadow:0 0 8px var(--neon-dim)}
+  .cell.a::before{background:var(--amber);box-shadow:0 0 8px rgba(255,180,84,.4)}
+  .cell.c::before{background:var(--cyan);box-shadow:0 0 8px rgba(79,216,255,.4)}
+  .cell.a h3{color:var(--amber)}
+  .cell.c h3{color:var(--cyan)}
+
+  .tag-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+  .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:1.5px;padding:6px 14px;border:1px solid var(--line);background:rgba(13,20,32,.7);color:var(--muted)}
+  .tag::before{content:"▸ ";color:var(--neon)}
+
+  /* 表格 */
+  .tbl{width:100%;border-collapse:collapse;background:rgba(13,20,32,.6);border:1px solid var(--line);font-size:13.5px}
+  .tbl th{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);text-align:left;padding:13px 20px;border-bottom:1px solid var(--line);background:rgba(16,26,41,.9)}
+  .tbl td{padding:12px 20px;border-bottom:1px solid var(--line);vertical-align:top;color:#9fb0ba}
+  .tbl tr:last-child td{border-bottom:none}
+  .tbl td:first-child{font-family:var(--serif);font-weight:600;white-space:nowrap;width:190px}
+  .tbl .s-neon{color:var(--neon)} .tbl .s-cyan{color:var(--cyan)} .tbl .s-amber{color:var(--amber)}
+  .tbl tr:hover td{background:var(--neon-soft)}
+
+  /* 串联流程 */
+  .flow{max-width:840px;position:relative;padding-left:26px;border-left:1px solid var(--line)}
+  .flow-item{background:rgba(13,20,32,.7);border:1px solid var(--line);padding:20px 26px;position:relative;margin-bottom:16px;transition:border-color .25s}
+  .flow-item:hover{border-color:var(--neon-dim)}
+  .flow-item::before{content:"";position:absolute;left:-31px;top:26px;width:9px;height:9px;border-radius:50%;background:var(--bg);border:2px solid var(--neon);box-shadow:0 0 10px var(--neon-dim)}
+  .flow-num{font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--neon)}
+  .flow-body h3{font-family:var(--serif);font-size:16.5px;font-weight:600;margin-top:4px;color:#e7efe9}
+  .flow-body p{font-size:13.5px;color:var(--muted);margin-top:6px}
+  .flow-item.up .flow-num{color:var(--amber)}
+  .flow-item.up::before{border-color:var(--amber);box-shadow:0 0 10px rgba(255,180,84,.4)}
+
+  /* footer */
+  footer{padding:56px 0 72px;color:var(--muted);font-size:13px;position:relative;z-index:1}
+  footer .rule{height:1px;background:var(--line);margin-bottom:28px;position:relative}
+  footer .rule::after{content:"";position:absolute;right:0;top:-3px;width:7px;height:7px;background:var(--neon);animation:pulse 2s infinite}
+  footer .foot-links a{color:var(--neon);text-decoration:none;margin-right:22px;font-family:var(--mono);font-size:12.5px;letter-spacing:1px}
+  footer .foot-links a:hover{text-shadow:0 0 8px var(--neon-dim)}
+  footer .foot-note{margin-top:14px;font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--dim);text-transform:uppercase}
+  .top-btn{position:fixed;right:26px;bottom:26px;width:46px;height:46px;background:var(--panel2);color:var(--neon);border:1px solid var(--neon-dim);font-family:var(--mono);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;z-index:110}
+  .top-btn.show{opacity:1;pointer-events:auto}
+  .top-btn:hover{background:var(--neon-soft);box-shadow:0 0 16px var(--neon-dim)}
+
+  /* reveal */
+  .reveal{opacity:0;transform:translateY(26px);transition:opacity .8s ease,transform .8s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  @media (max-width:860px){
+    .hero{grid-template-columns:1fr}
+    .radar{display:none}
+    .hero h1{font-size:32px}
+    .lv-num{font-size:52px}
+    .lv-head{gap:16px}
+    .step .en{display:none}
+    nav .links a{margin-left:14px;font-size:11px}
+  }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<div class="ticker"><div class="tk">
+  <b>SYSTEM ONLINE</b> · MISSION:LAYER-01 · SoS:LAYER-02 · VEHICLE:LAYER-03 · SYSTEMS:LAYER-04 · SUBSYSTEMS:LAYER-05 · MODULES:LAYER-06 · <i>STATUS: ALL NODES OPERATIONAL</i> · PAYLOAD: RECON / FIRE / EOD READY · LINK: ENCRYPTED · ETA DUE 2026.11.11 12:00 · <b>SYSTEM ONLINE</b> · MISSION:LAYER-01 · SoS:LAYER-02 · VEHICLE:LAYER-03 · SYSTEMS:LAYER-04 · SUBSYSTEMS:LAYER-05 · MODULES:LAYER-06 · <i>STATUS: ALL NODES OPERATIONAL</i> · PAYLOAD: RECON / FIRE / EOD READY · LINK: ENCRYPTED · ETA DUE 2026.11.11 12:00 ·
+</div></div>
+
+<nav>
+  <div class="wrap">
+    <div class="brand">
+      <span class="dot"></span>
+      <a href="../" style="text-decoration:none;color:inherit"><span class="zh">轮腿式无人作战平台</span></a>
+      <span class="en">Tactical Systems Architecture</span>
+    </div>
+    <div class="links">
+      <a href="#levels">六层架构</a>
+      <a href="#chain">串联阐述</a>
+      <a href="https://github.com/AweiiiH/complex-systems-engineering-2026" target="_blank">GitHub 仓库</a>
+    </div>
+  </div>
+</nav>
+
+<header>
+  <div class="halo"></div>
+  <div class="wrap hero">
+    <div>
+      <div class="kicker">Complex Systems Engineering · Assignment 01 · 2026</div>
+      <h1>轮腿式<em>无人作战平台</em><br>六层系统架构解析</h1>
+      <div class="chain"><b>任务</b> — <b>体系</b> — <b>整机</b> — <b>系统</b> — <b>子系统</b> — <b>模块</b></div>
+      <p class="lede">围绕小组所选的"系统"——轮腿式无人作战平台，向上补全任务层与体系层，向下分解系统层、子系统层与模块层，串联阐述六层之间的需求分解与能力支撑关系。</p>
+      <div class="foot-meta">
+        <span>MISSION → SoS → VEHICLE → SYSTEMS</span>
+        <span>SUB-SYSTEMS → <b>MODULES</b></span>
+        <span>UPDATED <b>2026.11.09</b></span>
+      </div>
+    </div>
+    <div class="radar">
+      <span class="corner c1"></span><span class="corner c2"></span><span class="corner c3"></span><span class="corner c4"></span>
+      <div class="ring"></div><div class="ring"></div><div class="ring"></div><div class="ring"></div>
+      <div class="cross-h"></div><div class="cross-v"></div>
+      <div class="sweep"></div>
+      <div class="core"></div>
+      <span class="blip b1"></span><span class="blip b2"></span><span class="blip b3"></span>
+      <span class="label l1">SYS // RADAR SWEEP</span>
+      <span class="label l2">R: 6-LAYER SCAN</span>
+    </div>
+  </div>
+</header>
+
+<div class="stepper-bar" id="levels">
+  <div class="wrap" style="padding:0">
+  <div class="stepper">
+    <div class="step" data-target="lv-mission"><div class="no">01</div><div class="name">任务</div><div class="en">Mission</div></div>
+    <div class="step" data-target="lv-sos"><div class="no">02</div><div class="name">体系</div><div class="en">System of Systems</div></div>
+    <div class="step" data-target="lv-vehicle"><div class="no">03</div><div class="name">整机</div><div class="en">Vehicles</div></div>
+    <div class="step" data-target="lv-system"><div class="no">04</div><div class="name">系统</div><div class="en">Systems</div></div>
+    <div class="step" data-target="lv-subsystem"><div class="no">05</div><div class="name">子系统</div><div class="en">Sub-systems</div></div>
+    <div class="step" data-target="lv-module"><div class="no">06</div><div class="name">模块</div><div class="en">Modules</div></div>
+  </div>
+  </div>
+</div>
+
+<!-- 01 任务 -->
+<section class="level" id="lv-mission">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">01</div>
+      <div>
+        <div class="lv-tag" style="color:var(--neon)">Level 01 · Mission Engineering</div>
+        <h2>任务层：无人作战任务</h2>
+        <div class="en">一切设计从所要完成的任务出发</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">本小组的"系统"服务的顶层任务是<b>无人作战任务</b>——在有人平台难以进入或代价过高的高危场景中，由轮腿式无人作战平台代替或协同有人力量执行作战行动。</p>
+    <div class="grid">
+      <div class="cell reveal"><div class="idx">M-01</div><h3>前沿侦察监视</h3><p>深入交火区前沿，长时间隐蔽侦察，持续回传态势情报。</p></div>
+      <div class="cell reveal"><div class="idx">M-02</div><h3>协同突击打击</h3><p>与有人作战单元协同，对既定目标实施多向突击。</p></div>
+      <div class="cell reveal"><div class="idx">M-03</div><h3>目标精确打击</h3><p>锁定高价值目标，引导或直接实施精确火力打击。</p></div>
+      <div class="cell reveal"><div class="idx">M-04</div><h3>排爆除险</h3><p>雷场探排、未爆弹处置、危险品搬运与销毁。</p></div>
+      <div class="cell reveal"><div class="idx">M-05</div><h3>战场支援保障</h3><p>伤员搜救转运、弹药物资前送、通信中继支援。</p></div>
+      <div class="cell c reveal"><div class="idx">STAKEHOLDERS</div><h3>任务相关方</h3><p>一线指挥员 · 平台操作/监控员 · 情报分析员 · 后勤保障人员 · 友邻作战单元 · 非作战人员 · 敌方对抗力量（约束条件）。</p></div>
+      <div class="cell a reveal"><div class="idx">MOE / MOS</div><h3>任务度量</h3><p>侦察覆盖率 · 目标识别准确率 · 任务完成时间 · 平台生存率 · 人员零伤亡替代率。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 体系 -->
+<section class="level" id="lv-sos">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">02</div>
+      <div>
+        <div class="lv-tag" style="color:var(--cyan)">Level 02 · System of Systems Engineering</div>
+        <h2>体系层：智能作战体系</h2>
+        <div class="en">多平台组网 · 有人无人协同的作战架构</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">无人作战任务由一个<b>多平台组网、有人无人协同</b>的智能作战体系承接——各成员系统大多能<b>独立运行、独立管理</b>，成员间以<b>信息交互</b>为主，整个体系<b>涌现出新的作战能力</b>，并随任务演化持续建设。</p>
+    <div class="grid">
+      <div class="cell c reveal"><div class="idx">SoS-01</div><h3>指挥控制中心（有人）</h3><p>任务规划、权限监督、有人无人协同调度，保留"人在回路"决策权。</p></div>
+      <div class="cell c reveal"><div class="idx">SoS-02</div><h3>轮腿式无人作战平台 × N</h3><p>本组所选"系统"，地面末端智能节点，可多台组网（含空中/水上异构平台）。</p></div>
+      <div class="cell c reveal"><div class="idx">SoS-03</div><h3>通信中继网络</h3><p>卫星通信、空中中继无人机、地面自组网，保障体系级信息链路。</p></div>
+      <div class="cell c reveal"><div class="idx">SoS-04</div><h3>后勤保障与补给系统</h3><p>能源补给、备件更换、回收维修，支撑体系持续运转。</p></div>
+      <div class="cell c reveal"><div class="idx">SoS-05</div><h3>情报侦察卫星体系</h3><p>体系级态势输入源，为任务规划提供全局情报。</p></div>
+    </div>
+    <div class="tag-row reveal">
+      <span class="tag">成员系统独立运行</span><span class="tag">成员间仅信息交互</span><span class="tag">体系涌现新能力</span><span class="tag">体系永不停止演化</span>
+    </div>
+  </div>
+</section>
+
+<!-- 03 整机 -->
+<section class="level" id="lv-vehicle">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">03</div>
+      <div>
+        <div class="lv-tag" style="color:var(--neon)">Level 03 · Vehicle Engineering</div>
+        <h2>整机层：轮腿式无人作战平台</h2>
+        <div class="en">轮-腿复合构型 · 高速机动 + 复杂地形越障 · 体系末端智能节点</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">整机采用<b>轮-腿复合构型</b>：平整路面以轮行高速机动，遇台阶、废墟、壕沟等复杂地形切换到腿行越障，兼顾机动效率与地形通过性。它是体系中的末端智能节点，也是"具身智能"的物理载体——通过实体与环境交互实现自主作战能力。</p>
+    <div class="grid">
+      <div class="cell reveal"><div class="idx">FORM / 01</div><h3>轮行模式</h3><p>四轮（或多轮）驱动，平整道路与开阔地高速机动，能耗低、续航长。</p></div>
+      <div class="cell reveal"><div class="idx">FORM / 02</div><h3>腿行模式</h3><p>轮腿切换为足式支撑，跨越台阶、碎石、壕沟、楼梯，进入室内与废墟。</p></div>
+      <div class="cell reveal"><div class="idx">FORM / 03</div><h3>轮腿协同</h3><p>轮腿同时参与支撑与驱动，实现爬坡、侧移、原地转向等复合机动。</p></div>
+      <div class="cell reveal"><div class="idx">ROLE</div><h3>整机定位</h3><p>体系里的末端智能执行节点：接收体系任务 → 自主/协同执行 → 回传态势。</p></div>
+      <div class="cell reveal"><div class="idx">ARCH</div><h3>整机搭载八大系统</h3><p>感知 · 决策 · 运动控制 · 任务载荷 · 通信 · 能源动力 · 综合防护 · 健康监测（见下层分解）。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 04 系统 -->
+<section class="level" id="lv-system">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">04</div>
+      <div>
+        <div class="lv-tag" style="color:var(--neon)">Level 04 · Systems Engineering</div>
+        <h2>系统层：整机搭载的八大系统</h2>
+        <div class="en">感知—决策—行动—协同—生存 的完整闭环</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">整机向下分解为八大系统，构成"感知—决策—行动—协同—生存"的完整闭环：</p>
+    <div class="grid">
+      <div class="cell reveal"><div class="idx">SYS-01</div><h3>多模态态势感知系统</h3><p>光电、红外、雷达等多模态传感器，负责环境与目标探测，输出统一态势。</p></div>
+      <div class="cell reveal"><div class="idx">SYS-02</div><h3>边缘智能决策系统</h3><p>搭载具身大模型，在战术端自主规划行为，支持人在回路的监督与接管。</p></div>
+      <div class="cell reveal"><div class="idx">SYS-03</div><h3>机动与运动控制系统</h3><p>适配全地形行走与行驶，完成姿态稳定、步态/轨迹执行。</p></div>
+      <div class="cell reveal"><div class="idx">SYS-04</div><h3>模块化任务载荷系统</h3><p>可换装侦察、火力、排爆等任务模块，一平台多任务能力。</p></div>
+      <div class="cell reveal"><div class="idx">SYS-05</div><h3>抗毁保密协同通信系统</h3><p>抗干扰、加密、自组网，与体系内其他成员交换任务信息。</p></div>
+      <div class="cell reveal"><div class="idx">SYS-06</div><h3>能源与动力管理系统</h3><p>动力电池/发动机管理、能源调度与分配，决定续航与机动上限。</p></div>
+      <div class="cell reveal"><div class="idx">SYS-07</div><h3>平台综合防护系统</h3><p>装甲防护、低可探测、烟幕干扰等主动/被动防护手段。</p></div>
+      <div class="cell reveal"><div class="idx">SYS-08</div><h3>健康监测与运维保障系统</h3><p>各分系统状态自检、故障诊断与预测，支撑体系后勤决策。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 子系统 -->
+<section class="level" id="lv-subsystem">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">05</div>
+      <div>
+        <div class="lv-tag" style="color:var(--amber)">Level 05 · Sub-systems</div>
+        <h2>子系统层：各系统的进一步分解</h2>
+        <div class="en">沿感知 - 规划 - 控制主线并扩展保障支线</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">沿<b>感知 - 规划 - 控制</b>主线并扩展保障支线，各系统继续拆分为子系统：</p>
+    <table class="tbl reveal">
+      <tr><th>所属系统</th><th>子系统</th><th>功能要点</th></tr>
+      <tr><td><span class="s-neon">态势感知系统</span></td><td>同步定位与地图构建（SLAM）</td><td>视觉/激光 SLAM，在无 GPS 环境下自定位并构建环境地图。</td></tr>
+      <tr><td></td><td>多传感器融合</td><td>光电/红外/雷达时空对齐与目标级融合，输出统一目标列表。</td></tr>
+      <tr><td></td><td>目标识别与跟踪</td><td>目标检测、分类、威胁排序与持续跟踪。</td></tr>
+      <tr><td><span class="s-cyan">智能决策系统</span></td><td>全局路径规划</td><td>基于任务与地图的全局机动路线生成。</td></tr>
+      <tr><td></td><td>局部动态避障</td><td>实时避障与重规划，应对动态障碍与突发威胁。</td></tr>
+      <tr><td></td><td>战术任务决策</td><td>具身大模型驱动的行为决策：侦察/突击/撤离等战术动作编排。</td></tr>
+      <tr><td><span class="s-cyan">运动控制系统</span></td><td>轮-腿协调运动控制</td><td>轮行/腿行模式切换决策，轮、腿驱动力的分工与协调。</td></tr>
+      <tr><td></td><td>关节伺服控制</td><td>腿部关节力矩/位置伺服，步态生成与平衡稳定控制。</td></tr>
+      <tr><td></td><td>轮毂驱动控制</td><td>轮毂电机转矩分配、差速转向与打滑抑制。</td></tr>
+      <tr><td></td><td>载荷精准执行</td><td>载荷指向稳定与操作精度控制（瞄准、抓取、排爆操作）。</td></tr>
+      <tr><td><span class="s-amber">通信系统</span></td><td>通信组网 / 抗干扰 / 数据加密</td><td>自组网、跳频抗干扰、端到端加密，保障链路抗毁。</td></tr>
+      <tr><td><span class="s-amber">能源系统</span></td><td>电池管理（BMS）/ 能源调度</td><td>荷电状态估计、充放电保护、任务级能耗优化分配。</td></tr>
+      <tr><td><span class="s-amber">健康监测系统</span></td><td>传感器自检 / 故障预测</td><td>分系统健康评估、剩余寿命预测、降级运行建议。</td></tr>
+      <tr><td><span class="s-amber">防护系统</span></td><td>主动防护 / 对抗干扰</td><td>威胁告警、烟幕/软杀伤对抗措施的触发控制。</td></tr>
+      <tr><td><span class="s-amber">任务载荷系统</span></td><td>侦察 / 火力 / 排爆载荷控制</td><td>各任务模块的操控、状态管理与快换接口控制。</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- 06 模块 -->
+<section class="level" id="lv-module">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">06</div>
+      <div>
+        <div class="lv-tag" style="color:var(--amber)">Level 06 · Modules</div>
+        <h2>模块层：子系统落地的硬件 / 软件模块</h2>
+        <div class="en">六层架构的物理落脚点 · 领域知识与具体设计</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">子系统最终由一个个<b>可设计、可采购、可测试、可更换</b>的具体模块实现——这是六层架构的物理落脚点。</p>
+    <div class="grid">
+      <div class="cell a reveal"><div class="idx">MOD-01</div><h3>感知模块</h3><p>光电摄像头 · 红外热像仪 · 毫米波雷达 · 激光雷达 · 超声波传感器</p></div>
+      <div class="cell a reveal"><div class="idx">MOD-02</div><h3>计算模块</h3><p>主控计算单元 · 边缘 AI 芯片 · 域控制器 · 具身大模型推理模组</p></div>
+      <div class="cell a reveal"><div class="idx">MOD-03</div><h3>执行模块</h3><p>轮毂电机 · 关节伺服电机 · 液压/电动作动器 · 谐波减速器</p></div>
+      <div class="cell a reveal"><div class="idx">MOD-04</div><h3>轮腿机构模块</h3><p>轮腿切换/锁定机构 · 悬架减振单元 · 腿部连杆 · 快换轮组</p></div>
+      <div class="cell a reveal"><div class="idx">MOD-05</div><h3>能源模块</h3><p>动力电池组 · 燃油/混合动力单元 · DC-DC 变换器 · 配电单元</p></div>
+      <div class="cell a reveal"><div class="idx">MOD-06</div><h3>通信模块</h3><p>数据链电台 · 卫星通信天线 · 4G/5G 模组 · 自组网节点模块</p></div>
+      <div class="cell a reveal"><div class="idx">MOD-07</div><h3>载荷模块</h3><p>侦察吊舱 · 火力打击模块 · 排爆机械臂 · 物资运载舱</p></div>
+      <div class="cell a reveal"><div class="idx">MOD-08</div><h3>防护模块</h3><p>复合装甲板 · 烟幕发射器 · 光电干扰机 · 隐身涂层</p></div>
+      <div class="cell a reveal"><div class="idx">MOD-09</div><h3>结构模块</h3><p>底盘车架 · 关节连杆机构 · 快换载荷接口 · 减振悬挂单元</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 串联阐述 -->
+<section class="level" id="chain" style="background:rgba(11,17,24,.55)">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">∑</div>
+      <div>
+        <div class="lv-tag" style="color:var(--neon)">Synthesis</div>
+        <h2>串联阐述：任务牵引体系，体系定义整机</h2>
+        <div class="en">自上而下的需求分解 × 自下而上的能力支撑</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">六层之间不是简单罗列，而是<b>自上而下的需求分解</b>与<b>自下而上的能力支撑</b>的双向映射：</p>
+    <div class="flow">
+      <div class="flow-item reveal"><div class="flow-num">[ 01 ]</div><div class="flow-body"><h3>任务牵引体系</h3><p>无人作战任务（侦察/突击/排爆）定义了需要什么样的作战能力 → 由此构架多平台组网、有人无人协同的智能作战体系。</p></div></div>
+      <div class="flow-item reveal"><div class="flow-num">[ 02 ]</div><div class="flow-body"><h3>体系定义整机</h3><p>体系架构中识别出"地面末端智能节点"这一关键缺口 → 定义整机：轮腿式无人作战平台（轮-腿复合构型，兼顾高速机动与复杂地形越障）。</p></div></div>
+      <div class="flow-item reveal"><div class="flow-num">[ 03 ]</div><div class="flow-body"><h3>整机分解系统</h3><p>为实现"感知—决策—行动—协同—生存"闭环，整机向下分解为感知、决策、运动控制、任务载荷、通信、能源、防护、健康监测八大系统。</p></div></div>
+      <div class="flow-item reveal"><div class="flow-num">[ 04 ]</div><div class="flow-body"><h3>系统细分子系统</h3><p>沿感知、规划、控制主线细分：SLAM / 多传感器融合 / 目标识别跟踪，全局规划 / 动态避障 / 战术决策，底盘控制 / 关节伺服 / 载荷执行，外加通信、能源、健康监测等保障子系统。</p></div></div>
+      <div class="flow-item reveal"><div class="flow-num">[ 05 ]</div><div class="flow-body"><h3>子系统落地为模块</h3><p>每个子系统最终由具体硬件/软件模块实现；模块经部件验证 → 系统集成 → 整机集成 → 体系组网，逐级向上汇聚能力，最终支撑任务完成。</p></div></div>
+      <div class="flow-item up reveal"><div class="flow-num">[ ↺ VERIFY LOOP ]</div><div class="flow-body"><h3>自下而上的能力支撑（验证闭环）</h3><p>模块能力支撑子系统 → 子系统支撑系统 → 系统构成整机 → 整机组网成体系 → 体系完成任务；任一层级不达标都会沿链路上溯影响任务度量（MOE/MOS）。</p></div></div>
+    </div>
+    <div class="tag-row reveal">
+      <span class="tag">任务工程 → 任务层</span><span class="tag">体系工程 → 体系层</span><span class="tag">系统工程 → 整机 / 系统 / 子系统层</span><span class="tag">领域知识 → 模块层</span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="rule"></div>
+    <div class="foot-links">
+      <a href="../">[ ← 作业目录 ]</a>
+      <a href="#levels">[ 回到六层架构 ]</a>
+      <a href="https://github.com/AweiiiH/complex-systems-engineering-2026" target="_blank">[ GitHub 仓库 ]</a>
+    </div>
+  </div>
+</footer>
+
+<button class="top-btn" id="topBtn" title="回到顶部">▲</button>
+
+<script>
+  const progress = document.getElementById('progress');
+  const topBtn = document.getElementById('topBtn');
+  const steps = document.querySelectorAll('.step');
+  steps.forEach(s => s.addEventListener('click', () => {
+    document.getElementById(s.dataset.target).scrollIntoView({behavior:'smooth'});
+  }));
+  const sections = ['lv-mission','lv-sos','lv-vehicle','lv-system','lv-subsystem','lv-module'];
+  window.addEventListener('scroll', () => {
+    const h = document.documentElement;
+    progress.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+    topBtn.classList.toggle('show', h.scrollTop > 600);
+    let current = null;
+    sections.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.getBoundingClientRect().top < 180) current = id;
+    });
+    steps.forEach(s => s.classList.toggle('active', s.dataset.target === current));
+  }, {passive:true});
+  topBtn.addEventListener('click', () => window.scrollTo({top:0,behavior:'smooth'}));
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, {threshold:.12});
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+</script>
+
+</body>
+</html>
