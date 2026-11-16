@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>轮腿式无人作战平台 · 概念定义与分析 | 复杂系统工程 · 小组作业 02</title>
+<style>
+  :root{
+    --bg:#070b10; --bg2:#0b1118; --panel:#0d1420; --panel2:#101a29;
+    --ink:#d7e2e6; --muted:#5f7280; --dim:#3c4c5a;
+    --line:rgba(90,140,160,.16); --grid:rgba(80,130,150,.07);
+    --neon:#3ef29b; --neon-dim:rgba(62,242,155,.35); --neon-soft:rgba(62,242,155,.08);
+    --amber:#ffb454; --cyan:#4fd8ff; --alert:#ff5a5a;
+    --serif:"Songti SC","Noto Serif SC","STSong",Georgia,serif;
+    --sans:"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
+    --mono:"SF Mono","JetBrains Mono","Cascadia Code",Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.8;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  ::selection{background:var(--neon);color:#04120b}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 32px;position:relative}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background-image:
+    linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:48px 48px}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.3;
+    background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.14) 3px 4px)}
+  #progress{position:fixed;top:0;left:0;height:2px;background:var(--neon);width:0;z-index:120;box-shadow:0 0 8px var(--neon-dim)}
+
+  .ticker{background:var(--bg2);border-bottom:1px solid var(--line);overflow:hidden;position:sticky;top:0;z-index:95;height:24px;display:flex;align-items:center}
+  .ticker .tk{white-space:nowrap;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--dim);animation:tick 34s linear infinite}
+  .ticker .tk b{color:var(--neon);font-weight:500}
+  .ticker .tk i{color:var(--amber);font-style:normal}
+  @keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  nav{position:sticky;top:24px;z-index:90;background:rgba(7,11,16,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:54px}
+  .brand{display:flex;align-items:center;gap:11px}
+  .brand .dot{width:7px;height:7px;border-radius:50%;background:var(--neon);box-shadow:0 0 10px var(--neon-dim);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .brand .zh{font-family:var(--serif);font-weight:600;font-size:15px;letter-spacing:1px}
+  .brand .en{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
+  nav .links a{color:var(--muted);text-decoration:none;font-family:var(--mono);font-size:11px;margin-left:18px;letter-spacing:.5px;transition:color .2s}
+  nav .links a:hover{color:var(--neon);text-shadow:0 0 8px var(--neon-dim)}
+
+  header{position:relative;padding:72px 0 60px;border-bottom:1px solid var(--line);overflow:hidden}
+  header .halo{position:absolute;left:46%;top:-200px;width:680px;height:680px;transform:translateX(-50%);
+    background:radial-gradient(circle,var(--neon-soft) 0%,transparent 62%);pointer-events:none}
+  .hero{display:grid;grid-template-columns:1fr 300px;gap:52px;align-items:center}
+  .hero .kicker{font-family:var(--mono);font-size:10.5px;letter-spacing:4px;color:var(--neon);text-transform:uppercase;display:flex;align-items:center;gap:14px;margin-bottom:18px}
+  .hero .kicker::before{content:"";width:32px;height:1px;background:var(--neon);box-shadow:0 0 6px var(--neon-dim)}
+  .hero h1{font-family:var(--serif);font-size:41px;font-weight:600;line-height:1.32;letter-spacing:2px;color:#eef6f2;text-shadow:0 0 24px rgba(62,242,155,.14)}
+  .hero h1 em{font-style:normal;color:var(--neon)}
+  .hero .chain{font-family:var(--mono);font-size:12px;letter-spacing:1.6px;color:var(--muted);margin-top:18px;border:1px solid var(--line);display:inline-block;padding:8px 16px;background:rgba(13,20,32,.7)}
+  .hero .chain b{color:var(--neon);font-weight:500}
+  .hero .chain i{color:var(--amber);font-style:normal}
+  .hero .lede{font-size:14px;color:#8fa1ab;max-width:620px;margin-top:16px}
+
+  .stack{border:1px solid var(--line);background:rgba(11,17,24,.7)}
+  .stk{padding:11px 14px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:baseline;cursor:default;transition:.2s}
+  .stk:last-child{border-bottom:none}
+  .stk:hover{background:var(--neon-soft)}
+  .stk .n{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1.4px;flex:0 0 54px}
+  .stk .t{font-size:12.5px;color:#cfdadf}
+  .stk .t i{display:block;font-style:normal;font-size:11px;color:var(--muted)}
+  .stk.a .t{color:var(--amber)} .stk.c .t{color:var(--cyan)}
+
+  .stepper-bar{background:rgba(11,17,24,.9);border-bottom:1px solid var(--line);position:sticky;top:78px;z-index:80}
+  .stepper{display:flex}
+  .step{flex:1;padding:11px 2px 10px;text-align:center;cursor:pointer;border-right:1px solid var(--line);transition:background .25s;position:relative}
+  .step:last-child{border-right:none}
+  .step::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:transparent;transition:all .25s}
+  .step:hover{background:var(--neon-soft)}
+  .step .no{font-family:var(--mono);font-size:9px;letter-spacing:1.6px;color:var(--dim)}
+  .step .name{font-size:12.5px;font-weight:600;margin-top:2px;color:#a9b8c0}
+  .step.active{background:var(--neon-soft)}
+  .step.active::after{background:var(--neon);box-shadow:0 0 8px var(--neon-dim)}
+  .step.active .name,.step.active .no{color:var(--neon)}
+
+  section.level{padding:58px 0;border-bottom:1px solid var(--line);position:relative;z-index:1}
+  .lv-head{display:flex;align-items:flex-end;gap:20px}
+  .lv-num{font-family:var(--mono);font-size:58px;font-weight:600;line-height:.82;color:transparent;-webkit-text-stroke:1px rgba(90,140,160,.3);user-select:none}
+  .lv-tag{font-family:var(--mono);font-size:9.5px;letter-spacing:2.6px;text-transform:uppercase;display:inline-flex;align-items:center;gap:9px}
+  .lv-tag::before{content:"◈";font-size:11px}
+  .lv-head h2{font-family:var(--serif);font-size:25px;font-weight:600;margin-top:6px;letter-spacing:1px;color:#eef6f2}
+  .lv-head .en{font-size:11.5px;color:var(--muted);margin-top:5px;letter-spacing:.5px}
+  .lv-desc{font-size:13.5px;color:#9fb0ba;max-width:880px;margin:16px 0 22px}
+  .lv-desc b{color:var(--neon);font-weight:600}
+  .lv-desc code,.k{font-family:var(--mono);font-size:11.5px;color:var(--amber);background:rgba(255,180,84,.08);padding:1px 5px;border:1px solid rgba(255,180,84,.2)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+  .cell{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);padding:18px 18px 16px;position:relative;transition:border-color .25s,transform .25s,box-shadow .25s}
+  .cell:hover{border-color:var(--neon-dim);transform:translateY(-3px);box-shadow:0 8px 26px rgba(62,242,155,.08)}
+  .cell .idx{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--dim)}
+  .cell h3{font-family:var(--serif);font-size:15.5px;font-weight:600;margin:7px 0 6px;color:#e7efe9}
+  .cell p{font-size:12.2px;color:var(--muted);line-height:1.72}
+  .cell::before{content:"";position:absolute;top:0;left:0;width:30px;height:2px;background:var(--neon);box-shadow:0 0 8px var(--neon-dim)}
+  .cell.a::before{background:var(--amber);box-shadow:0 0 8px rgba(255,180,84,.4)}
+  .cell.c::before{background:var(--cyan);box-shadow:0 0 8px rgba(79,216,255,.4)}
+  .cell.a h3{color:var(--amber)} .cell.c h3{color:var(--cyan)}
+
+  /* 通用交互件 */
+  .filters{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 14px;align-items:center}
+  .fbtn{font-family:var(--mono);font-size:10.5px;letter-spacing:1px;padding:6px 13px;border:1px solid var(--line);background:rgba(13,20,32,.7);color:var(--muted);cursor:pointer;transition:.18s}
+  .fbtn:hover{border-color:var(--neon-dim);color:var(--ink)}
+  .fbtn.on{background:var(--neon-soft);border-color:var(--neon);color:var(--neon)}
+  .fbtn .c{opacity:.55;margin-left:4px}
+  .fbtn.a.on{background:rgba(255,180,84,.08);border-color:rgba(255,180,84,.6);color:var(--amber)}
+  .search{flex:1;min-width:150px;font-family:var(--mono);font-size:11.5px;padding:6px 12px;background:rgba(13,20,32,.8);border:1px solid var(--line);color:var(--ink);outline:none}
+  .search:focus{border-color:var(--neon-dim)}
+  .search::placeholder{color:var(--dim)}
+
+  .rail{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin:6px 0 14px}
+  .rnode{border:1px solid var(--line);background:rgba(13,20,32,.7);padding:9px 6px;cursor:pointer;text-align:center;transition:.18s;position:relative}
+  .rnode .sn{font-family:var(--mono);font-size:9.5px;color:var(--dim);letter-spacing:1px}
+  .rnode .sn2{font-size:11.5px;color:#a9b8c0;margin-top:2px}
+  .rnode:hover{border-color:var(--neon-dim)}
+  .rnode.on{border-color:var(--neon);background:var(--neon-soft);box-shadow:0 0 14px rgba(62,242,155,.12)}
+  .rnode.on .sn,.rnode.on .sn2{color:var(--neon)}
+  .rnode.done .sn::after{content:" ✓";color:var(--neon)}
+
+  .panel{border:1px solid var(--line);background:rgba(13,20,32,.75);padding:20px 24px;position:relative;overflow:hidden}
+  .panel::before{content:"";position:absolute;top:0;left:0;width:44px;height:2px;background:var(--neon);box-shadow:0 0 8px var(--neon-dim)}
+  .panel .ph{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .panel .ph .pid{font-family:var(--mono);font-size:11px;color:var(--neon);letter-spacing:1.5px}
+  .panel .ph h3{font-family:var(--serif);font-size:17px;font-weight:600;color:#e7efe9}
+  .panel .ph .tag{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--muted);letter-spacing:1px}
+  .kv{border-top:1px solid var(--line)}
+  .kv .row{display:grid;grid-template-columns:104px 1fr;gap:14px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+  .kv .row:last-child{border-bottom:none}
+  .kv .kk{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;color:var(--dim);padding-top:3px}
+  .kv .vv{color:#9fb0ba;line-height:1.75}
+  .kv .vv b{color:#dbe7e2}
+  .badge{display:inline-block;font-family:var(--mono);font-size:9.5px;padding:2px 7px;border:1px solid;letter-spacing:.8px;margin:2px 4px 2px 0}
+  .badge.g{color:var(--neon);border-color:var(--neon-dim);background:var(--neon-soft)}
+  .badge.y{color:var(--amber);border-color:rgba(255,180,84,.35);background:rgba(255,180,84,.07)}
+  .badge.c{color:var(--cyan);border-color:rgba(79,216,255,.35);background:rgba(79,216,255,.07)}
+
+  /* 方案权衡条 */
+  .solbtns{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 14px}
+  .bars{display:grid;gap:8px;max-width:620px}
+  .bar-row{display:grid;grid-template-columns:88px 1fr 38px;gap:12px;align-items:center;font-size:11.5px}
+  .bar-row .bl{color:var(--muted);font-family:var(--mono);font-size:10.5px;letter-spacing:.6px}
+  .bar{height:7px;background:rgba(90,140,160,.14);position:relative;overflow:hidden}
+  .bar i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,var(--neon),rgba(62,242,155,.35));transition:width .55s cubic-bezier(.2,.8,.2,1)}
+  .bar-row .bv{font-family:var(--mono);font-size:10.5px;color:var(--neon);text-align:right}
+  .sol-concl{margin-top:14px;padding:10px 14px;border-left:2px solid var(--neon);background:var(--neon-soft);font-size:12.5px;color:#b8c8cf}
+  .sol-concl b{color:var(--neon)}
+
+  /* 时间轴 */
+  .tl{position:relative;padding-left:24px;border-left:1px solid var(--line);max-width:880px}
+  .tl-i{position:relative;padding:9px 0 9px 6px;cursor:pointer;transition:.2s}
+  .tl-i::before{content:"";position:absolute;left:-30px;top:18px;width:9px;height:9px;border-radius:50%;background:var(--bg);border:2px solid var(--dim);transition:.2s}
+  .tl-i:hover::before{border-color:var(--neon)}
+  .tl-i.on::before{border-color:var(--neon);box-shadow:0 0 10px var(--neon-dim);background:var(--neon)}
+  .tl-i .tt{font-family:var(--mono);font-size:10px;letter-spacing:1.6px;color:var(--dim)}
+  .tl-i .th{font-family:var(--serif);font-size:15px;color:#cfdadf;margin-top:2px}
+  .tl-i.on .th{color:var(--neon)} .tl-i.on .tt{color:var(--neon)}
+
+  .duo{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;margin-top:22px}
+  @media (max-width:880px){ .duo{grid-template-columns:1fr} }
+
+  /* 卡片网格（相关方） */
+  .shgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(184px,1fr));gap:9px}
+  .shcard{border:1px solid var(--line);background:rgba(13,20,32,.7);padding:10px 12px;cursor:pointer;transition:.18s;position:relative}
+  .shcard:hover{border-color:var(--neon-dim);transform:translateY(-2px)}
+  .shcard.on{border-color:var(--neon);background:var(--neon-soft)}
+  .shcard .id{font-family:var(--mono);font-size:9px;letter-spacing:1px;color:var(--dim)}
+  .shcard .nm{font-size:12.2px;color:#cfdadf;margin-top:2px;line-height:1.5}
+  .shcard .cat{font-family:var(--mono);font-size:8.5px;letter-spacing:1px;margin-top:5px;color:var(--muted)}
+  .shcard[data-cat="直接"] .cat{color:var(--neon)}
+  .shcard[data-cat="交互"] .cat{color:var(--cyan)}
+  .shcard[data-cat="影响"] .cat{color:var(--amber)}
+  .shcard[data-cat="被影响"] .cat{color:#b58cff}
+  .hide{display:none!important}
+
+  /* 象限 */
+  .quad{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);max-width:760px}
+  .q{background:rgba(13,20,32,.85);padding:12px 14px;cursor:pointer;transition:.18s}
+  .q:hover{background:rgba(62,242,155,.05)}
+  .q.on{background:rgba(62,242,155,.08);box-shadow:inset 0 0 0 1px var(--neon-dim)}
+  .q .qt{font-family:var(--mono);font-size:9px;letter-spacing:1.2px;color:var(--dim);text-transform:uppercase}
+  .q.on .qt{color:var(--neon)}
+  .q .qn{font-size:12px;color:#a9b8c0;margin-top:4px}
+  .q .qn b{color:#e7efe9;font-family:var(--mono);font-size:10.5px}
+
+  /* 折叠 */
+  .acc{border:1px solid var(--line);background:rgba(13,20,32,.55)}
+  .acc-i{border-bottom:1px solid var(--line)}
+  .acc-i:last-child{border-bottom:none}
+  .acc-h{display:flex;align-items:baseline;gap:14px;padding:12px 18px;cursor:pointer;transition:.18s}
+  .acc-h:hover{background:var(--neon-soft)}
+  .acc-h .no{font-family:var(--mono);font-size:10.5px;color:var(--neon);letter-spacing:1px;flex:0 0 22px}
+  .acc-h h4{font-family:var(--serif);font-size:14.5px;font-weight:600;color:#dfe9e4;flex:0 0 auto}
+  .acc-h .sum{font-size:11.5px;color:var(--dim);margin-left:auto;text-align:right;max-width:52%;line-height:1.6}
+  .acc-h .arw{font-family:var(--mono);font-size:11px;color:var(--dim);flex:0 0 12px;transition:transform .25s}
+  .acc-i.open .acc-h{background:rgba(62,242,155,.05);border-bottom:1px solid var(--line)}
+  .acc-i.open .acc-h .arw{transform:rotate(90deg);color:var(--neon)}
+  .acc-i.open .acc-h h4{color:var(--neon)}
+  .acc-b{display:none;padding:14px 20px 18px 54px}
+  .acc-i.open .acc-b{display:block;animation:fadeIn .3s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .acc-b p{font-size:12.3px;color:#96a8b2;line-height:1.8;margin:3px 0}
+  .acc-b p b{color:#d7e2e6;font-weight:600}
+  .acc-b ul{list-style:none;margin:4px 0}
+  .acc-b li{font-size:12.3px;color:#96a8b2;line-height:1.78;padding-left:14px;position:relative;margin:2px 0}
+  .acc-b li::before{content:"▪";position:absolute;left:0;top:1px;color:var(--neon);opacity:.7;font-size:9px}
+  .acc-b li b{color:#d7e2e6;font-weight:600}
+  .acc-b .note{border-left:2px solid var(--amber);background:rgba(255,180,84,.05);padding:8px 12px;margin:8px 0;font-size:12px;color:#b9a98d}
+  .acc-b .note b{color:var(--amber)}
+
+  /* SR 列表 */
+  .srlist{border:1px solid var(--line);background:rgba(13,20,32,.55)}
+  .sr{display:flex;gap:12px;padding:9px 16px;border-bottom:1px solid var(--line);align-items:flex-start;transition:background .18s}
+  .sr:last-child{border-bottom:none}
+  .sr:hover{background:var(--neon-soft)}
+  .sr .sid{font-family:var(--mono);font-size:11px;color:var(--cyan);flex:0 0 52px;padding-top:1px}
+  .sr .stx{flex:1;font-size:12.2px;color:#9fb0ba;line-height:1.72}
+  .sr .smt{flex:0 0 auto;display:flex;gap:6px;align-items:center;padding-top:1px}
+  .sr .src{font-family:var(--mono);font-size:9.5px;color:var(--dim)}
+  .empty{padding:22px;text-align:center;font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+
+  /* 原话卡 */
+  .flips{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+  .flip{border:1px solid var(--line);background:rgba(13,20,32,.7);padding:14px 16px;cursor:pointer;transition:.2s;min-height:116px;position:relative}
+  .flip:hover{border-color:var(--neon-dim)}
+  .flip .q2{font-size:12.8px;color:#dfe9e4;line-height:1.7;font-family:var(--serif)}
+  .flip .q2::before{content:"“";color:var(--neon);font-size:20px;line-height:0;margin-right:2px}
+  .flip .q2::after{content:"”";color:var(--neon);font-size:20px;line-height:0;margin-left:2px}
+  .flip .hint{font-family:var(--mono);font-size:9px;letter-spacing:1.4px;color:var(--dim);margin-top:8px}
+  .flip .ans{display:none;margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
+  .flip .ans p{font-size:11.8px;color:#9fb0ba;line-height:1.7}
+  .flip .ans p b{color:var(--neon);font-weight:600}
+  .flip.open{border-color:var(--neon);background:rgba(62,242,155,.05)}
+  .flip.open .ans{display:block;animation:fadeIn .35s ease}
+  .flip.open .hint{color:var(--neon)}
+
+  .tag-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+  .tag{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;padding:4px 11px;border:1px solid var(--line);background:rgba(13,20,32,.7);color:var(--muted)}
+  .tag::before{content:"▸ ";color:var(--neon)}
+
+  footer{padding:44px 0 60px;color:var(--muted);font-size:12.5px;position:relative;z-index:1}
+  footer .rule{height:1px;background:var(--line);margin-bottom:24px;position:relative}
+  footer .rule::after{content:"";position:absolute;right:0;top:-3px;width:7px;height:7px;background:var(--neon);animation:pulse 2s infinite}
+  footer .foot-links a{color:var(--neon);text-decoration:none;margin-right:20px;font-family:var(--mono);font-size:12px;letter-spacing:1px}
+  footer .foot-links a:hover{text-shadow:0 0 8px var(--neon-dim)}
+  footer .kbdhint{margin-top:14px;font-family:var(--mono);font-size:10px;letter-spacing:1.4px;color:var(--dim)}
+  footer .kbdhint b{color:var(--muted);border:1px solid var(--line);padding:1px 6px;margin:0 3px}
+  .top-btn{position:fixed;right:24px;bottom:24px;width:42px;height:42px;background:var(--panel2);color:var(--neon);border:1px solid var(--neon-dim);font-family:var(--mono);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;z-index:110}
+  .top-btn.show{opacity:1;pointer-events:auto}
+  .top-btn:hover{background:var(--neon-soft);box-shadow:0 0 16px var(--neon-dim)}
+
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  @media (max-width:980px){
+    .hero{grid-template-columns:1fr;gap:26px}
+    .hero h1{font-size:28px}
+    .stack{display:grid;grid-template-columns:1fr 1fr}
+    .stk{border-right:1px solid var(--line)}
+    .rail{grid-template-columns:repeat(4,1fr)}
+    .lv-num{font-size:40px}
+    .step .name{font-size:10.5px}
+    nav .links{display:none}
+    .acc-h .sum{display:none}
+    .quad{grid-template-columns:1fr}
+    .sr{flex-wrap:wrap}
+    .sr .smt{margin-left:64px}
+  }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<div class="ticker"><div class="tk">
+  <b>PHASE: CONCEPT DEFINITION</b> · PROBLEM-SPACE → SOLUTION-SPACE · ConOps:<i>ORG / SoS</i> · OpsCon:<i>SYSTEM</i> · 相关方:<b>18</b> · BR:<b>08</b> · SR:<b>26</b> · BRS/StRS:<b>4-1 / 4-5</b> · DUE 2026.11.18 12:00 · <b>PHASE: CONCEPT DEFINITION</b> · PROBLEM-SPACE → SOLUTION-SPACE · ConOps:<i>ORG / SoS</i> · OpsCon:<i>SYSTEM</i> · 相关方:<b>18</b> · BR:<b>08</b> · SR:<b>26</b> · BRS/StRS:<b>4-1 / 4-5</b> · DUE 2026.11.18 12:00 ·
+</div></div>
+
+<nav>
+  <div class="wrap">
+    <div class="brand">
+      <span class="dot"></span>
+      <a href="index.html" style="text-decoration:none;color:inherit"><span class="zh">轮腿式无人作战平台</span></a>
+      <span class="en">Concept Definition</span>
+    </div>
+    <div class="links">
+      <a href="assignment1.html">← 作业1</a>
+      <a href="#trace">脉络</a>
+      <a href="#br">业务</a>
+      <a href="#conops">ConOps</a>
+      <a href="#opscon">OpsCon</a>
+      <a href="#stake">相关方</a>
+      <a href="#sr">需求</a>
+      <a href="#brs">BRS</a>
+      <a href="#strs">StRS</a>
+      <a href="#review">追溯</a>
+    </div>
+  </div>
+</nav>
+
+<header>
+  <div class="halo"></div>
+  <div class="wrap hero">
+    <div>
+      <div class="kicker">Complex Systems Engineering · Assignment 02</div>
+      <h1>概念定义与分析<br><em>业务/任务</em>与<em>相关方需求</em></h1>
+      <div class="chain"><b>问题域</b> → <b>方案域</b> · ConOps <i>组织层</i> → OpsCon <i>系统层</i> → BRS / StRS</div>
+      <p class="lede">以轮腿式无人作战平台为对象，完成业务与任务分析、相关方识别与需求定义，输出业务需求规格说明（BRS，表4-1）与相关方需求规格说明（StRS，表4-5）。页面内所有图表均可点选。</p>
+    </div>
+    <div class="stack">
+      <div class="stk"><div class="n">LAYER 01</div><div class="t">组织使命 / 战略<i>为什么要建这个能力</i></div></div>
+      <div class="stk"><div class="n">LAYER 02</div><div class="t">ConOps · 作战想定<i>多系统协同的全局画面</i></div></div>
+      <div class="stk a"><div class="n">LAYER 03</div><div class="t">OpsCon · 系统运行<i>本系统做什么、为什么</i></div></div>
+      <div class="stk c"><div class="n">LAYER 04</div><div class="t">BRS / StRS<i>可分析、可验证的需求</i></div></div>
+    </div>
+  </div>
+</header>
+
+<div class="stepper-bar" id="trace">
+  <div class="wrap" style="padding:0">
+  <div class="stepper">
+    <div class="step" data-target="trace"><div class="no">00</div><div class="name">脉络</div></div>
+    <div class="step" data-target="br"><div class="no">01</div><div class="name">业务需求</div></div>
+    <div class="step" data-target="conops"><div class="no">02</div><div class="name">ConOps</div></div>
+    <div class="step" data-target="opscon"><div class="no">03</div><div class="name">OpsCon</div></div>
+    <div class="step" data-target="stake"><div class="no">04</div><div class="name">相关方</div></div>
+    <div class="step" data-target="sr"><div class="no">05</div><div class="name">需求条目</div></div>
+    <div class="step" data-target="brs"><div class="no">06</div><div class="name">BRS</div></div>
+    <div class="step" data-target="strs"><div class="no">07</div><div class="name">StRS</div></div>
+    <div class="step" data-target="review"><div class="no">∑</div><div class="name">追溯</div></div>
+  </div>
+  </div>
+</div>
+
+<!-- 00 脉络 -->
+<section class="level">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">00</div>
+      <div>
+        <div class="lv-tag" style="color:var(--neon)">Method · Concept Definition</div>
+        <h2>两个过程，一条从概念到需求的链</h2>
+        <div class="en">概念定义阶段只做两件事：定义问题与方案类；定义相关方需要与需求</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">按第 4 章框架，本阶段由<b>业务或使命分析</b>与<b>相关方需要与需求定义</b>两个过程组成。前者站在业务管理层面回答“要不要做、做哪一类”，后者站在业务运行层面回答“为谁做、做成什么样”。</p>
+
+    <div class="grid">
+      <div class="cell reveal"><div class="idx">PROCESS / 01</div><h3>业务或使命分析</h3><p>输入组织战略与现有 ConOps，输出问题/机会空间、首选解决方案类、初步生存周期概念与 BRS。核心动作是对标现状与未来、识别差距。</p></div>
+      <div class="cell reveal"><div class="idx">PROCESS / 02</div><h3>相关方需要与需求定义</h3><p>识别相关方 → 获取需要 → 分析并转化为需求 → 确认协商 → 建立追溯，输出 StRS 与 OpsCon。</p></div>
+      <div class="cell a reveal"><div class="idx">KEY / NEED ≠ REQ</div><h3>需要是期望，需求是共识</h3><p>需要只代表某一方立场，常带预设方案、残缺且互相冲突；需求必须综合各方、补齐隐含信息、加约束并做到单一可验证。</p></div>
+    </div>
+
+    <p class="lv-desc reveal" style="margin-top:26px">点击下表任一层，查看它在本次作业中的落点（<span style="color:var(--neon)">绿色框</span>为当前选中）：</p>
+    <div class="filters reveal" id="chainBtns">
+      <button class="fbtn on" data-chain="0">① 组织使命</button>
+      <button class="fbtn" data-chain="1">② ConOps</button>
+      <button class="fbtn" data-chain="2">③ OpsCon</button>
+      <button class="fbtn" data-chain="3">④ BRS</button>
+      <button class="fbtn" data-chain="4">⑤ StRS</button>
+    </div>
+    <div class="panel reveal" id="chainPanel">
+      <div class="ph"><span class="pid">CHAIN 01</span><h3>组织使命与战略</h3><span class="tag">本章不产出文档，只提供约束</span></div>
+      <div class="kv" id="chainKv"></div>
+    </div>
+
+    <div class="tag-row reveal">
+      <span class="tag">相关方 18 类</span><span class="tag">BR 08 条</span><span class="tag">SR 26 条</span><span class="tag">BRS / StRS 各 8 章</span><span class="tag">运行阶段 S0–S7</span>
+    </div>
+  </div>
+</section>
+
+<!-- 01 业务需求 -->
+<section class="level" id="br" style="background:rgba(11,17,24,.5)">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">01</div>
+      <div>
+        <div class="lv-tag" style="color:var(--neon)">Business / Mission Analysis</div>
+        <h2>业务需求：差距、方案类与 BR</h2>
+        <div class="en">先定义清楚“问题”，再谈“方案”——问题定义错，后面全错</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">以“三对标”（对标对手、对标自身、对标未来）识别现状与未来状态的差距，得到问题空间；再在解空间中提出候选方案类并权衡，选定<b>轮-腿复合构型</b>。</p>
+
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(320px,1fr))">
+      <div class="cell reveal"><div class="idx">GAP / 01–02</div><h3>人进不去，装备也进不去</h3><p>G1 城镇废墟、坑道、雷场中人员进入即暴露，伤亡风险随城区作战比例上升；G2 轮式越不了台阶、履带跟不上节奏、足式跑不远——结构性矛盾。</p></div>
+      <div class="cell reveal"><div class="idx">GAP / 03–04</div><h3>体系末端断链，杀伤链太长</h3><p>G3 现有无人体系以空中为主，地面“看得见、进得去、打得着”的智能节点缺位；G4 发现—上报—决策—打击靠人工逐级传递，难以压制瞬时目标。</p></div>
+      <div class="cell a reveal"><div class="idx">GAP / 05</div><h3>用不起、养不起</h3><p>G5 操作培训周期长、维修依赖厂家、备件与电池管理粗放，制约分队级规模化运用。</p></div>
+    </div>
+
+    <p class="lv-desc reveal" style="margin-top:26px">解空间权衡：点击方案类，比较四个维度（0–100 归一化评分，用于本组内部比较，非实测数据）：</p>
+    <div class="solbtns reveal" id="solBtns"></div>
+    <div class="bars reveal" id="solBars"></div>
+    <div class="sol-concl reveal" id="solConcl"></div>
+
+    <p class="lv-desc reveal" style="margin-top:28px">业务需求（BR）为组织层面的目标级陈述，必须可度量。向下驱动 SR，向上支撑组织使命：</p>
+    <div class="srlist reveal" id="brList"></div>
+    <div class="tag-row reveal">
+      <span class="tag">问题域：现状 → 未来 → 差距</span><span class="tag">解空间：4 类 → 权衡 → 轮腿复合</span><span class="tag">BR 8 条全部可度量</span>
+    </div>
+  </div>
+</section>
+
+<!-- 02 ConOps -->
+<section class="level" id="conops">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">02</div>
+      <div>
+        <div class="lv-tag" style="color:var(--cyan)">Concept of Operations · Organization Level</div>
+        <h2>ConOps：部队打算怎么用这组系统打仗</h2>
+        <div class="en">多系统、多对多的全局画面；本平台只是其中一个黑盒</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">ConOps 描述组织层面的运行意图：在什么任务、用什么编成、按什么流程、受什么约束。它不是用户愿望清单，必须由相关方共同开发并保证工程可行。</p>
+
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
+      <div class="cell c reveal"><div class="idx">MISSION</div><h3>任务想定</h3><p>某合成旅在城镇—山地混合地形执行“清剿夺控”。敌依托建筑、废墟与坑道设防，以狙击、IED、小型无人机侦察袭扰。</p></div>
+      <div class="cell c reveal"><div class="idx">THREAT</div><h3>对抗条件</h3><p>敌具备电子干扰与 GNSS 压制能力；城区 GNSS 部分可用；建筑遮挡导致链路不稳，需中继保障。</p></div>
+      <div class="cell c reveal"><div class="idx">CONSTRAINT</div><h3>关键约束</h3><p>附带损伤限制、明确 ROE、开火须人在回路授权、不得越出授权地理围栏。</p></div>
+    </div>
+
+    <p class="lv-desc reveal" style="margin-top:26px">作战流程：点击任一阶段查看该阶段的活动与输出，也可 <button class="fbtn" id="autoBtn" style="padding:3px 10px;font-size:10px">▶ 自动播放</button></p>
+    <div class="tl reveal" id="tl"></div>
+
+    <div class="duo reveal">
+      <div class="panel">
+        <div class="ph"><span class="pid">CURRENT</span><h3 id="cnTitle">任务下达与筹划</h3><span class="tag" id="cnTag">C1</span></div>
+        <div class="kv" id="cnKv"></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><span class="pid">FORMATION</span><h3>体系编成与分工</h3><span class="tag" id="cnSum">6 类成员</span></div>
+        <div class="kv" id="formKv"></div>
+      </div>
+    </div>
+
+    <div class="tag-row reveal">
+      <span class="tag">六要素：目标·范围·职责·运行·环境·假设</span><span class="tag">本平台为体系末端地面节点</span><span class="tag">开火权始终在人</span>
+    </div>
+  </div>
+</section>
+
+<!-- 03 OpsCon -->
+<section class="level" id="opscon" style="background:rgba(11,17,24,.5)">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">03</div>
+      <div>
+        <div class="lv-tag" style="color:var(--amber)">Operational Concept · System Level</div>
+        <h2>OpsCon：平台在八类运行阶段里要做什么</h2>
+        <div class="en">以本系统为核心的一对多交互；说做什么、为什么，不说怎么做</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">把 ConOps 的全局画面收窄到本系统。按运行阶段拆解，每个阶段从<b>参与者、输入输出、物理环境、互操作系统、政策约束、典型异常</b>六要素定义（参考教材起落架案例的活动分解方法）。</p>
+
+    <p class="lv-desc reveal" style="margin:0 0 8px">点击阶段切换：</p>
+    <div class="rail reveal" id="stageRail"></div>
+    <div class="panel reveal">
+      <div class="ph"><span class="pid" id="stId">S0</span><h3 id="stName">储运待机</h3><span class="tag">六要素 + 派生需求</span></div>
+      <div class="kv" id="stKv"></div>
+    </div>
+
+    <p class="lv-desc reveal" style="margin-top:26px">运行模式（StRS §4.4 的输入）：点击查看要点</p>
+    <div class="filters reveal" id="modeBtns"></div>
+    <div class="panel reveal" style="padding:14px 20px">
+      <div style="font-size:12.5px;color:#9fb0ba;line-height:1.8" id="modeText"></div>
+    </div>
+    <div class="tag-row reveal">
+      <span class="tag">8 阶段循环使用</span><span class="tag">5 种运行模式</span><span class="tag">异常必有派生需求</span>
+    </div>
+  </div>
+</section>
+
+<!-- 04 相关方 -->
+<section class="level" id="stake">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">04</div>
+      <div>
+        <div class="lv-tag" style="color:var(--neon)">Stakeholder Identification</div>
+        <h2>相关方：18 类，四个视角</h2>
+        <div class="en">三类划分建骨架，五类交互要素补漏，影响力—利益定优先级</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">相关方识别不完整是概念阶段最典型的失误。本组先用<b>三类划分</b>建立骨架，再用<b>五类交互要素</b>（信号、数据、物质、能量、活动）逐一补漏：凡在这五类要素上与平台有交互的其他系统所有者，都可能是被遗漏的相关方。</p>
+
+    <div class="filters reveal" id="shFilters">
+      <button class="fbtn on" data-sh="all">全部 <span class="c">18</span></button>
+      <button class="fbtn" data-sh="直接">直接 <span class="c">5</span></button>
+      <button class="fbtn" data-sh="交互">交互 <span class="c">5</span></button>
+      <button class="fbtn" data-sh="影响">施加影响 <span class="c">4</span></button>
+      <button class="fbtn" data-sh="被影响">被影响 <span class="c">4</span></button>
+    </div>
+    <div class="shgrid reveal" id="shGrid"></div>
+
+    <p class="lv-desc reveal" style="margin-top:24px">影响力—利益矩阵：点击象限可筛选该象限相关方</p>
+    <div class="quad reveal" id="quad">
+      <div class="q" data-q="1"><div class="qt">高影响 · 高利益 ▸ 重点管理 <b>5</b></div><div class="qn">SH-01 总体 · SH-03 部队 · SH-04 鉴定 · SH-05 采办 · SH-07 敌方</div></div>
+      <div class="q" data-q="2"><div class="qt">高影响 · 低利益 ▸ 保持满意 <b>3</b></div><div class="qn">SH-11 预研 · SH-13 标准 · SH-14 军控</div></div>
+      <div class="q" data-q="3"><div class="qt">低影响 · 高利益 ▸ 随时告知 <b>5</b></div><div class="qn">SH-02 供应商 · SH-06 同编队 · SH-09 保障 · SH-10 链路 · SH-12 院所</div></div>
+      <div class="q" data-q="4"><div class="qt">低影响 · 低利益 ▸ 持续观察 <b>5</b></div><div class="qn">SH-08 环境 · SH-15 平民 · SH-16 仓储 · SH-17 对手 · SH-18 公众</div></div>
+    </div>
+
+    <div class="panel reveal" style="margin-top:16px">
+      <div class="ph"><span class="pid" id="shId">SH-03</span><h3 id="shName">使用方：作战部队 / 无人作战分队</h3><span class="tag" id="shCat">直接相关方</span></div>
+      <div class="kv" id="shKv"></div>
+    </div>
+    <div class="tag-row reveal">
+      <span class="tag">五类交互要素补漏</span><span class="tag">高影响高利益 5 类为需求优先级依据</span><span class="tag">敌方按威胁处理，不按正向需求</span>
+    </div>
+  </div>
+</section>
+
+<!-- 05 相关方需求 -->
+<section class="level" id="sr" style="background:rgba(11,17,24,.5)">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">05</div>
+      <div>
+        <div class="lv-tag" style="color:var(--cyan)">Stakeholder Requirements</div>
+        <h2>从原话到需求：26 条可验证条目</h2>
+        <div class="en">追问目的是剥离预设方案；需求必须单一、可验证、有来源</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">相关方给出的往往不是需求，而是<b>带着预设方案的抱怨</b>。需求工程师要追问“目的是什么”，剥离方案，再把目的转写为可验证条目。点击卡片可展开转换过程。</p>
+    <div class="flips reveal" id="flips"></div>
+
+    <p class="lv-desc reveal" style="margin-top:26px">需求条目（SR）：可按优先级筛选或直接搜索</p>
+    <div class="filters reveal" id="srFilters">
+      <button class="fbtn on" data-p="all">全部 <span class="c">26</span></button>
+      <button class="fbtn a" data-p="必须">必须 <span class="c" id="cntM">0</span></button>
+      <button class="fbtn a" data-p="应该">应该 <span class="c" id="cntS">0</span></button>
+      <input class="search" id="srSearch" placeholder="搜索关键词：越障 / 链条 / 续航 / 授权 …">
+    </div>
+    <div class="srlist reveal" id="srList"></div>
+    <div class="empty hide" id="srEmpty">// 无匹配条目，请调整筛选条件</div>
+    <div class="tag-row reveal">
+      <span class="tag">必须 21 条 · 应该 5 条</span><span class="tag">每条带来源、优先级、验证方法</span><span class="tag">26 条全部可追溯到 BR</span>
+    </div>
+  </div>
+</section>
+
+<!-- 06 BRS -->
+<section class="level" id="brs">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">06</div>
+      <div>
+        <div class="lv-tag" style="color:var(--neon)">Deliverable A · ISO/IEC/IEEE 29148</div>
+        <h2>业务需求规格说明（BRS）</h2>
+        <div class="en">按教材表4-1 的 8 章轮廓输出；点击章节展开正文</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">BRS 站在<b>业务管理层面</b>，回答组织为什么要改变业务、如何利用系统促进业务。为便于评审，8 章默认折叠，标题右侧为章节摘要。</p>
+
+    <div class="acc reveal" id="brsAcc">
+      <div class="acc-i open">
+        <div class="acc-h"><span class="no">1</span><h4>简介</h4><span class="sum">目的 · 范围 · 概况 · 定义 · 主要相关方</span><span class="arw">▸</span></div>
+        <div class="acc-b">
+          <p><b>业务目的：</b>作战样式向分布式、无人化演进，城镇与山地高危地形中的侦察、清除与伴随支援任务对人员暴露的容忍度持续下降。现役地面装备存在“轮式进不去、履带跟不上、足式跑不远”的结构性矛盾，地面末端缺少可进入、可持续的智能节点。</p>
+          <p>本项目的业务目的是研制<b>轮腿式无人作战平台</b>，以轮-腿复合构型兼顾道路机动效率与复杂地形通过性，作为地面末端智能节点接入现有作战体系，使作战单元在人员零暴露或低暴露条件下获得持续的战术态势、精确打击与危险处置能力。</p>
+          <ul>
+            <li><b>业务域：</b>陆军合成部队地面无人作战（Ground Unmanned Combat Operations）。</li>
+            <li><b>范围内活动：</b>任务筹划与目标分配、前沿侦察与目标指示、建筑物与废墟搜索清除、IED/未爆物处置、伴随支援与物资前送、打击效果评估、训练与保障。</li>
+            <li><b>系统范围：</b>1 套平台（整机、载荷接口、控制终端、保障与检测设备、备附件）；不含指挥信息系统、弹药与武器本体、空中平台。</li>
+            <li><b>业务三层：</b>作战指挥层（任务与授权）— 无人分队运用层（操控与协同）— 平台与保障层（整机、载荷、维修补给）。</li>
+          </ul>
+          <div class="note"><b>主要相关方：</b>军方采办（SH-05）、作战部队（SH-03）、总体研制（SH-01）、试验鉴定（SH-04）、配套供应商（SH-02）为高影响力；标准法规（SH-13）与军控智库（SH-14）通过规则约束业务边界。完整清单见 §04。</div>
+        </div>
+      </div>
+      <div class="acc-i">
+        <div class="acc-h"><span class="no">2</span><h4>参考文献</h4><span class="sum">国际标准 · 教材 · 军标</span><span class="arw">▸</span></div>
+        <div class="acc-b">
+          <ul>
+            <li>ISO/IEC/IEEE 15288:2023 系统生存周期过程；ISO/IEC/IEEE 29148:2018 需求工程</li>
+            <li>INCOSE 系统工程手册（第四版）</li>
+            <li>郭宝柱等《系统工程——基于国际标准过程的研究与实践》第 4 章 概念定义</li>
+            <li>GJB 军用无人系统通用要求、电磁兼容与三防相关标准；自主武器系统使用相关规定</li>
+          </ul>
+        </div>
+      </div>
+      <div class="acc-i">
+        <div class="acc-h"><span class="no">3</span><h4>业务管理需求</h4><span class="sum">环境 · 使命目标 · 业务模型 · 信息环境</span><span class="arw">▸</span></div>
+        <div class="acc-b">
+          <ul>
+            <li><b>业务环境：</b>城市作战比例上升、战场向建筑密集与地下空间延伸；对手电子战与小型无人机能力提升，GNSS 与链路可靠性下降；无人系统伦理法规趋严。内部：编制与训练体系在建、维修保障能力有限、经费与批产规模受限。</li>
+            <li><b>使命：</b>为合成部队提供可进入高危地形的地面无人作战能力。<b>目的：</b>降低人员伤亡、压缩杀伤链、扩展感知与机动边界。</li>
+            <li><b>目标（SMART）：</b>3 年内完成样机与定型试验；形成连排级运用能力；任务完成率 ≥85%；人员暴露时间下降 ≥70%；全寿命成本较履带式同类降低 ≥20%。</li>
+            <li><b>业务模型：</b>“军方需求牵引 + 竞争性研制 + 定型批产 + 部队运用”：军方提出需求与指标，主承包商负责总体集成，供应商提供轮腿机构、伺服、感知、计算、通信与载荷，院校提供基础技术支撑，部队反馈形成迭代闭环。</li>
+            <li><b>信息环境：</b>与现有地面/空中无人系统共用数据链体制与地面控制站；开放式架构与统一载荷接口纳入无人系统族谱；任务数据、地图基准、目标库集中管理并满足保密要求。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="acc-i">
+        <div class="acc-h"><span class="no">4</span><h4>业务运行需求</h4><span class="sum">过程 BP · 策略规则 · 约束 · 质量 · 结构</span><span class="arw">▸</span></div>
+        <div class="acc-b">
+          <p><b>业务过程：</b>BP-01 任务筹划 → BP-02 编组与配置 → BP-03 机动投送 → BP-04 前沿侦察 → BP-05 目标处置 → BP-06 撤收归档 → BP-07 保障循环。</p>
+          <ul>
+            <li><b>策略与规则：</b>开火须人在回路授权，平台不得自主决定杀伤；有人平台对无人平台保持指挥关系，紧急情况可一键接管或迫停；城区遵守附带损伤限制与 ROE，活动受地理围栏约束；通信静默与频谱使用服从战场电磁频谱管理。</li>
+            <li><b>约束：</b>不得造成不可接受的附带损伤，武器需具备精确打击/最小当量能力；侦察阶段控制噪声与红外特征；不得越出授权区域，越界须自动告警并停止前进。</li>
+            <li><b>运行质量：</b>任务成功率 ≥85%；态势回传端到端时延 ≤2 s；平台可用度 ≥90%；识别虚警率 ≤10%；单次任务战损率 ≤10%；出动准备 ≤15 min。</li>
+            <li><b>业务结构：</b>指挥“旅—营—无人作战分队”三级；保障“营保障排—旅修理所—工业部门”三级维修。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="acc-i">
+        <div class="acc-h"><span class="no">5</span><h4>提案系统初步运行概念</h4><span class="sum">六项能力 · 五种模式 · 五个场景</span><span class="arw">▸</span></div>
+        <div class="acc-b">
+          <p><b>初步运行概念：</b>轮-腿复合构型地面无人平台，具备复合机动、多模态感知、自主决策、任务载荷、协同通信、能源保障六项核心能力；运行模式分遥控、监督自主、协同编组、失效降级、储运维护五种；用户类型为操作员、指挥员、维修人员与保障人员；支持环境为城镇、山地、坑道，-30～+55 ℃，IP67。</p>
+          <ul>
+            <li><b>SC-01 城镇建筑物搜索清除：</b>轮行接近街区 → 腿行上楼梯与废墟 → 室内搜索 → 目标指示 → 授权打击。</li>
+            <li><b>SC-02 山地坑道侦察：</b>长距离轮行 → 坑道口切腿行 → 低光/无光建图侦察 → 数据回传。</li>
+            <li><b>SC-03 伴随突击：</b>与步战车协同推进，前出侦察并提供目标指示。</li>
+            <li><b>SC-04 物资前送：</b>载荷换装物资箱，按预设路线前送至前沿班组。</li>
+            <li><b>SC-05 失联自主返航：</b>链路中断后自主判定、返航或待机、重连恢复。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="acc-i">
+        <div class="acc-h"><span class="no">6</span><h4>其他初步生存周期概念</h4><span class="sum">采办 · 部署 · 支持 · 弃置</span><span class="arw">▸</span></div>
+        <div class="acc-b">
+          <ul>
+            <li><b>采办：</b>竞争性研制 + 样机竞标 + 定型试验 + 批量采购。</li>
+            <li><b>部署：</b>车载投送为主、两人可短距搬运；展开 ≤5 min。</li>
+            <li><b>支持：</b>三级维修、模块化换件、备件与电池集中管理、软件远程升级。</li>
+            <li><b>弃置：</b>电池梯次利用与合规回收、弹药与危险品销毁、存储数据彻底擦除。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="acc-i">
+        <div class="acc-h"><span class="no">7</span><h4>项目约束</h4><span class="sum">周期 · 经费 · 国产化 · 试验</span><span class="arw">▸</span></div>
+        <div class="acc-b">
+          <ul>
+            <li>研制周期 ≤36 个月；样机 3 台；经费按批复额度控制。</li>
+            <li>关键器件国产化，供应链自主可控。</li>
+            <li>须通过环境试验、电磁兼容试验与作战效能试验。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="acc-i">
+        <div class="acc-h"><span class="no">8</span><h4>附录：缩写与缩略语</h4><span class="sum">BRS · StRS · ConOps · OpsCon · MOE / MOP / TPM</span><span class="arw">▸</span></div>
+        <div class="acc-b">
+          <p>BRS 业务需求规格说明 · StRS 相关方需求规格说明 · ConOps 运营概念 · OpsCon 运行概念 · MOE 任务效能度量 · MOP 性能度量 · TPM 技术性能度量 · ROE 交战规则 · CEP 圆概率误差 · GNSS 全球导航卫星系统 · MTBF 平均故障间隔时间 · MTTR 平均修复时间</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 07 StRS -->
+<section class="level" id="strs" style="background:rgba(11,17,24,.5)">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">07</div>
+      <div>
+        <div class="lv-tag" style="color:var(--cyan)">Deliverable B · ISO/IEC/IEEE 29148</div>
+        <h2>相关方需求规格说明（StRS）</h2>
+        <div class="en">按教材表4-5 的 8 章轮廓输出；与 BRS 的差别在抽象层次</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">BRS 说“业务要什么成效”，StRS 说“系统在什么场景下必须做到什么”。两者章节名称高度相似，这是评审时最容易被追问的点。</p>
+
+    <div class="acc reveal" id="strsAcc">
+      <div class="acc-i open">
+        <div class="acc-h"><span class="no">1</span><h4>简介</h4><span class="sum">相关方目的 · 范围 · 概况 · 定义 · 相关方</span><span class="arw">▸</span></div>
+        <div class="acc-b">
+          <p><b>相关方目的：</b>获得“<b>进得去、看得见、打得着、回得来</b>”的地面无人作战能力——分队希望以更少暴露完成城区与坑道侦察清除；指挥员希望获得可用实时态势与可控打击手段；保障人员希望好修、好换、好搬；采办与鉴定方希望指标可测、风险可控。</p>
+          <ul>
+            <li><b>范围：</b>使用（合成旅/营无人分队、配属侦察火力单元）· 保障（营保障排、旅修理所、后方仓储）· 训练（院校与训练基地）· 采办鉴定（军代局、试验鉴定机构）· 研制（主承包商、分系统供应商、科研院所）。</li>
+            <li><b>概况：</b>系统在体系中处于地面末端：向上接受指挥所任务与授权，横向与有人战车、无人机交换态势，向下与保障分队发生物质与能量交互。边界含整机、载荷接口、控制终端；边界外为链路、指挥系统与弹药。</li>
+            <li><b>定义补充：</b>自主等级按 AL-1（辅助）至 AL-5（完全自主）划分，本系统目标为 <b>AL-3 有条件自主</b>（关键决策人在回路）；接管指操作员从自主切回直接控制，须有明确状态反馈。</li>
+            <li><b>相关方：</b>18 类（SH-01～18），分直接、交互、施加影响/被影响三类，详见 §04。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="acc-i">
+        <div class="acc-h"><span class="no">2</span><h4>参考</h4><span class="sum">本页 BRS 与 OpsCon · 标准 · 军标</span><span class="arw">▸</span></div>
+        <div class="acc-b">
+          <ul><li>本页 BRS（§06）与 OpsCon（§03）</li><li>ISO/IEC/IEEE 29148:2018；ISO/IEC/IEEE 15288:2023</li><li>GJB 军用无人系统通用要求、电磁兼容与三防相关标准</li></ul>
+        </div>
+      </div>
+      <div class="acc-i">
+        <div class="acc-h"><span class="no">3</span><h4>业务管理需求</h4><span class="sum">环境三特征 · 使命目标 · 运行模式 · 信息环境</span><span class="arw">▸</span></div>
+        <div class="acc-b">
+          <p><b>环境三特征：</b>城区与地下空间通信遮挡严重、GNSS 可用性不稳定；对手具备电子干扰与低成本无人机侦察能力；交战距离近、时间窗口短，决策必须前压。三者共同决定系统不能依赖单一导航与单一链路。</p>
+          <ul>
+            <li><b>使命/目的/目标：</b>以无人替代有人进入高危区域 → 降低伤亡、缩短反应时间、扩大可控区域 → 单次任务完成率 ≥85%、人员暴露下降 ≥70%、发现到打击 ≤60 s。</li>
+            <li><b>业务模型：</b>“分队编配、集中训练、分级维修、按任务循环使用”：每分队编配 3～6 台，任务间隙在保障点换电检测，故障按模块级更换、离位送修。</li>
+            <li><b>信息环境：</b>接入指挥信息系统与情报体系，共享地图基准、目标清单与态势；对外接口采用统一消息格式、支持标准数据链；对外数据加密并满足涉密管理要求。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="acc-i">
+        <div class="acc-h"><span class="no">4</span><h4>系统运行需求</h4><span class="sum">过程 SP · 策略 · 约束 · 模式与状态</span><span class="arw">▸</span></div>
+        <div class="acc-b">
+          <p><b>系统过程：</b>SP-01 自检入网 → SP-02 机动（轮行/腿行/复合）→ SP-03 感知（建图定位识别跟踪）→ SP-04 决策（路径、分配、规避、交战建议）→ SP-05 载荷作业 → SP-06 协同 → SP-07 失效处置 → SP-08 保障。</p>
+          <ul>
+            <li><b>策略与规则：</b>自主等级 AL-3，授权任务内自主规划行驶，开火须人确认；权限优先级“人工接管 &gt; 预置任务 &gt; 自主优化”，接管 ≤1 s 生效并反馈；失效安全优先于任务完成；失联 60 s 判失联，按预置策略返航或待机，重连后先同步状态再恢复任务。</li>
+            <li><b>约束：</b>-30～+55 ℃，IP67，抗雨雪沙尘，抗 0.5 m 跌落；满足军用 EMC 且不干扰同编队通信导航；可车载固定、两人短距搬运；侦察工况噪声 ≤65 dB @30 m。</li>
+            <li><b>模式与状态：</b>M1 遥控 / M2 监督自主 / M3 协同编组 / M4 失效降级 / M5 储运维护。任何迁移须在终端显示当前模式与切换原因；M1↔M2 为常态，M4 只能由系统自动进入、人工确认退出。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="acc-i">
+        <div class="acc-h"><span class="no">5</span><h4>用户需求</h4><span class="sum">UR-01～10 口语化诉求及其对应 SR</span><span class="arw">▸</span></div>
+        <div class="acc-b">
+          <ul>
+            <li><b>UR-01</b> 戴战术手套、夜暗条件下也能完成基本操作 → <span class="k">SR-24</span></li>
+            <li><b>UR-02</b> 不想学一个星期，半天训练就能执行任务 → <span class="k">SR-24</span></li>
+            <li><b>UR-03</b> 一个人要能看好几台，不要每台配一个人 → <span class="k">SR-13</span></li>
+            <li><b>UR-04</b> 进楼、上楼梯、过废墟不能卡住或翻倒 → <span class="k">SR-06 / SR-09 / SR-18</span></li>
+            <li><b>UR-05</b> 打到一半没信号了，它得自己回来或躲好 → <span class="k">SR-12</span></li>
+            <li><b>UR-06</b> 电池要能像弹匣一样快速更换 → <span class="k">SR-21</span></li>
+            <li><b>UR-07</b> 两个人五分钟内能从车上卸下投入战斗 → <span class="k">SR-23</span></li>
+            <li><b>UR-08</b> 坏了告诉我坏在哪，别让我拆开找 → <span class="k">SR-22</span></li>
+            <li><b>UR-09</b> 开火必须我说了算 → <span class="k">SR-17</span></li>
+            <li><b>UR-10</b> 打不准就别打，别误伤自己人和老百姓 → <span class="k">SR-03 / SR-17</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="acc-i">
+        <div class="acc-h"><span class="no">6</span><h4>详细生存周期概念</h4><span class="sum">运行 · 场景 · 采办 · 部署 · 支持 · 弃置</span><span class="arw">▸</span></div>
+        <div class="acc-b">
+          <ul>
+            <li><b>运行概念：</b>按 S0～S7 八个阶段循环，常态 M2，进建筑与坑道降级 M1，多平台编组 M3，异常 M4（见 §03）。</li>
+            <li><b>运行场景：</b>SC-01～SC-05 见 BRS §5；补充 SC-06 夜间街区巡逻警戒、SC-07 灾后/事故现场侦察（非战争运用）。</li>
+            <li><b>采办：</b>两阶段竞争，方案阶段 2 家并行研制样机，比测后择优定型，分批采购并由部队试用收集数据。</li>
+            <li><b>部署：</b>编制到无人作战分队，3～6 台/分队；步战车或运输车投送；展开与撤收各 ≤5 min；具备伴随保障与前出保障两种形态。</li>
+            <li><b>支持：</b>三级维修（分队换件换电 / 旅级模块更换检测 / 工业部门部件修理大修）；备件“易损件前置、贵重件集中”；软件远程升级与版本管理。</li>
+            <li><b>弃置：</b>电池危险品回收或梯次利用；武器弹药接口件按军械规程销毁；存储介质彻底擦除；金属与电子件循环利用。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="acc-i">
+        <div class="acc-h"><span class="no">7</span><h4>项目约束</h4><span class="sum">周期经费 · 三方确认 · 变更控制</span><span class="arw">▸</span></div>
+        <div class="acc-b">
+          <ul>
+            <li>研制周期与经费同 BRS §7；试验样机须覆盖典型城镇与山地地形。</li>
+            <li>相关方需求确认须经军代局、使用部队与试验鉴定机构三方签署。</li>
+            <li>需求变更须走变更控制流程，并同步更新追溯矩阵。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="acc-i">
+        <div class="acc-h"><span class="no">8</span><h4>附录：缩写</h4><span class="sum">StRS · SR · UR · SP · SC · AL</span><span class="arw">▸</span></div>
+        <div class="acc-b">
+          <p>StRS 相关方需求规格说明 · SR 相关方需求 · UR 用户需求 · SP 系统过程 · SC 运行场景 · AL 自主等级 · ROE 交战规则 · IED 简易爆炸装置</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 08 追溯 -->
+<section class="level" id="review">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">∑</div>
+      <div>
+        <div class="lv-tag" style="color:var(--neon)">Review &amp; Traceability</div>
+        <h2>追溯与自检</h2>
+        <div class="en">评审不是“看文档”，而是对每一条需求做接受或拒绝的决策</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">点击任一业务需求，查看它向下分解到哪些相关方需求、用什么度量与什么方法验证。这是需求基线可审查的最低要求。</p>
+
+    <div class="filters reveal" id="traceBtns"></div>
+    <div class="panel reveal">
+      <div class="ph"><span class="pid" id="trId">BR-01</span><h3 id="trName">人员低暴露</h3><span class="tag">BR → SR → MOE</span></div>
+      <div class="kv" id="trKv"></div>
+    </div>
+
+    <p class="lv-desc reveal" style="margin-top:26px">按教材评审准则自检（表4-7 摘要）：</p>
+    <div class="srlist reveal">
+      <div class="sr"><div class="sid" style="color:var(--neon)">✔</div><div class="stx"><b>用相关方的语言表述</b>：§05 保留“原话 → 目的 → 需求”的转换过程，StRS §5 保留 UR 口语化需求。</div><div class="smt"><span class="badge g">符合</span></div></div>
+      <div class="sr"><div class="sid" style="color:var(--neon)">✔</div><div class="stx"><b>有优先级</b>：必须 / 应该 / 可选三级，26 条全覆盖。</div><div class="smt"><span class="badge g">符合</span></div></div>
+      <div class="sr"><div class="sid" style="color:var(--amber)">△</div><div class="stx"><b>有理由（背景）</b>：已用“来源”标注相关方与上级 BR，理由文字仍偏简，需补典型场景说明。</div><div class="smt"><span class="badge y">部分</span></div></div>
+      <div class="sr"><div class="sid" style="color:var(--amber)">△</div><div class="stx"><b>完整、单一、无连词堆叠</b>：SR-01 与 SR-07 各含两组指标，应拆分为独立条目。</div><div class="smt"><span class="badge y">部分</span></div></div>
+      <div class="sr"><div class="sid" style="color:var(--amber)">△</div><div class="stx"><b>与设计解耦</b>：SR-06 的“楼梯/台阶”属场景约束可接受；个别条目隐含构型，需复核。</div><div class="smt"><span class="badge y">部分</span></div></div>
+      <div class="sr"><div class="sid" style="color:var(--neon)">✔</div><div class="stx"><b>可验证、可追溯</b>：每条给出检查/分析/演示/试验之一，BR ↔ SR ↔ MOE 双向可追。</div><div class="smt"><span class="badge g">符合</span></div></div>
+    </div>
+
+    <p class="lv-desc reveal" style="margin-top:24px">遗留问题（下一轮迭代）：</p>
+    <div class="srlist reveal">
+      <div class="sr"><div class="sid" style="color:var(--amber)">O-01</div><div class="stx">SR-01 同时约束识别距离与准确率/虚警率，违反“单一需求”原则，拟拆为 SR-01a / 01b。</div><div class="smt"><span class="badge y">待修订</span></div></div>
+      <div class="sr"><div class="sid" style="color:var(--amber)">O-02</div><div class="stx">敌对方（SH-07）属对抗性相关方，其诉求应转为威胁与约束条目，下一版单列“威胁需求”。</div><div class="smt"><span class="badge y">待补充</span></div></div>
+      <div class="sr"><div class="sid" style="color:var(--amber)">O-03</div><div class="stx">MOE 与 MOP 界限未完全拉开：现有度量多为性能指标，缺少面向任务效能的 MOE 建模（如任务成功概率）。</div><div class="smt"><span class="badge y">待建模</span></div></div>
+    </div>
+
+    <div class="tag-row reveal">
+      <span class="tag">BRS 8 章 · StRS 8 章</span><span class="tag">BR 8 · SR 26 · UR 10</span><span class="tag">相关方 18</span><span class="tag">遗留问题 3 项</span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="rule"></div>
+    <div class="foot-links">
+      <a href="index.html">[ ← 作业目录 ]</a>
+      <a href="assignment1.html">[ ← 作业1：六层架构 ]</a>
+      <a href="#trace">[ 回到顶部 ]</a>
+      <a href="https://github.com/AweiiiH/complex-systems-engineering-2026" target="_blank">[ GitHub 仓库 ]</a>
+    </div>
+    <div class="kbdhint">快捷键：<b>J</b>/<b>↓</b> 下一节 · <b>K</b>/<b>↑</b> 上一节 · <b>ESC</b> 收起全部面板</div>
+  </div>
+</footer>
+
+<button class="top-btn" id="topBtn" title="回到顶部">▲</button>
+
+<script>
+/* ========== 数据 ========== */
+const CHAIN = [
+  {k:'组织使命与战略', q:'为什么要建这个能力', a:'以无人替代有人进入高危地形，降低人员暴露与伤亡。它不产出文档，但决定 BR 的价值取向。', lab:'不产出 · 提供约束'},
+  {k:'ConOps · 运营概念', q:'组织打算怎么用这组系统作战', a:'某合成旅城镇—山地“清剿夺控”：6 台平台分三向进入，无人机中继，指挥所统一分配目标。多系统、多对多。', lab:'§02 · 组织层'},
+  {k:'OpsCon · 运行概念', q:'本系统在每类场景中做什么、为什么', a:'把全局画面收窄到本系统：S0–S7 八阶段 × 六要素（参与者/输入输出/环境/互操作系统/政策/异常）。', lab:'§03 · 系统层'},
+  {k:'BRS · 业务需求规格', q:'组织为什么要改变业务、系统如何促进业务', a:'8 章：简介、参考、业务管理需求、业务运行需求、初步运行概念、其他生存周期概念、项目约束、附录；需求以 BR 表达。', lab:'§06 · 管理视角'},
+  {k:'StRS · 相关方需求规格', q:'相关方为什么要这个系统、运行中要满足什么', a:'8 章：简介、参考、业务管理需求、系统运行需求、用户需求、详细生存周期概念、项目约束、附录；需求以 SR 表达。', lab:'§07 · 运行视角'}
+];
+
+const SOLS = {
+  '纯轮式': {scores:[30,92,85,92,70], concl:'通过性不足：不能越台阶与废墟，GAP-02 不满足。'},
+  '履带式': {scores:[55,42,82,90,38], concl:'通过性中等但噪声与红外特征大，城区易暴露且越野速度低。'},
+  '足式（四足/双足）': {scores:[90,34,42,55,62], concl:'通过性最好，但能耗高、续航与承载不足，难以满足 6 h 续航要求。'},
+  '轮-腿复合': {scores:[88,84,62,52,74], concl:'兼顾机动效率与通过性，选定本构型；代价是轮腿机构需攻关、成熟度中等。'}
+};
+const DIMS = ['通过性','机动效率','续航承载','技术成熟度','隐蔽性'];
+
+const CONOPS = [
+  {id:'C1', t:'任务下达与筹划', d:'指挥所明确目标区、授权边界、ROE 与协同关系；无人分队完成平台与载荷配置、链路与频谱申请。', out:'任务指令、频率许可、编组方案', who:'指挥所 · 无人分队'},
+  {id:'C2', t:'机动投送与展开', d:'由步战车载运至攻击出发阵地，2 人 5 min 内完成卸车、展开、自检与入网。', out:'入网确认、可用状态', who:'操作员 2 人 · 载员'},
+  {id:'C3', t:'前沿侦察与建图', d:'多平台分方向进入，轮行快速接近、遇障切换腿行，边行进边构建局部三维地图并回传态势。', out:'局部三维地图、态势', who:'操作员 · 无人机'},
+  {id:'C4', t:'目标确认与指示', d:'识别可疑目标 → 多源交叉确认 → 上报坐标与图像 → 等待指挥所授权（人在回路）。', out:'目标坐标、图像、置信度', who:'操作员 · 情报分析员'},
+  {id:'C5', t:'协同突击与效果评估', d:'按授权实施直接打击或引导有人火力；无人机与平台回传毁伤评估，决定是否补充打击。', out:'打击结果、毁伤评估', who:'指挥员 · 操作员 · 有人火力'},
+  {id:'C6', t:'撤收、补给与再出动', d:'撤至集结点、更换电池与载荷、数据回传归档，进入下一轮任务循环。', out:'归档数据、可用状态', who:'操作员 · 保障分队'}
+];
+const FORM = [
+  ['指挥控制中心','1 组 · 任务规划、目标分配、开火授权'],
+  ['轮腿式无人作战平台','6 台 · 前沿侦察、建筑与坑道清除、目标指示'],
+  ['侦察/中继无人机','2 架 · 空中侦察、链路中继、战损评估'],
+  ['有人步战车','2 台 · 火力支援、载员突击、平台投送'],
+  ['无人作战分队','3–6 人 · 操控监督、载荷使用、异常处置'],
+  ['后装保障分队','1 组 · 换电、备件补给、抢修回收']
+];
+
+const STAGES = [
+  {id:'S0', n:'储运待机', who:'保障人员', io:'入：运输架 / 充电桩 · 出：自检报告', env:'车库、方舱、野外集结地', sys:'充电与检测设备、仓储系统', pol:'电池存储安全规定', ab:'电池自放电、接口锈蚀', sr:'SR-22 / SR-25'},
+  {id:'S1', n:'投送展开', who:'操作员 2 人、载员', io:'入：车载固定 · 出：入网确认', env:'攻击出发阵地、道路', sys:'步战车、指挥车', pol:'装卸安全规程', ab:'卸车跌落、入网失败', sr:'SR-23 / SR-12'},
+  {id:'S2', n:'轮行机动', who:'操作员（监督）', io:'入：路径任务 · 出：里程/电量/态势', env:'道路、开阔地、缓坡', sys:'导航卫星、通信链路', pol:'限速、禁入区', ab:'打滑、GNSS 拒止、链路弱', sr:'SR-05 / SR-10 / SR-12'},
+  {id:'S3', n:'越障转换', who:'操作员（授权切换）', io:'入：地形判断 · 出：模式状态', env:'台阶、废墟、壕沟、楼梯、坑道口', sys:'地形感知、IMU', pol:'不得在暴露地段长时间停留', ab:'切换卡滞、倾覆、下滑', sr:'SR-06 / SR-09 / SR-18'},
+  {id:'S4', n:'侦察感知', who:'操作员、情报分析员', io:'入：搜索区域 · 出：图像/点云/目标清单', env:'建筑内部、坑道、夜暗、烟尘', sys:'无人机（中继、交叉验证）', pol:'侦察授权范围、战争法约束', ab:'烟雾强光致盲、目标误判', sr:'SR-01 / SR-11'},
+  {id:'S5', n:'目标交战', who:'指挥员（授权）、操作员', io:'入：授权指令 · 出：打击结果/毁伤评估', env:'城区近距 ≤300 m、坑道', sys:'指挥系统、有人火力', pol:'人在回路授权、ROE、附带损伤限制', ab:'授权超时、误识别、载荷故障', sr:'SR-03 / SR-04 / SR-17'},
+  {id:'S6', n:'撤收回收', who:'操作员、保障人员', io:'入：撤收指令 · 出：数据归档、状态报告', env:'集结点、隐蔽地域', sys:'运输车辆、回收装置', pol:'数据保密与销毁规定', ab:'失联、无法自行返回', sr:'SR-18 / SR-22'},
+  {id:'S7', n:'补给维修', who:'保障分队、修理人员', io:'入：备件/电池 · 出：可用状态', env:'野战保障点', sys:'备件管理、检测设备', pol:'维修规程、软件版本管理', ab:'备件缺失、故障定位困难', sr:'SR-21 / SR-22'}
+];
+
+const MODES = [
+  {k:'M1 遥控', v:'操作员直接操控行走与载荷。用于复杂室内、精细操作与异常处置，对链路质量要求最高。'},
+  {k:'M2 监督自主', v:'常态模式。平台自主规划行驶，操作员设定目标点、监督状态、按需接管，人机权限清晰可切换。'},
+  {k:'M3 协同编组', v:'多平台按任务分工协同（侦察—掩护—打击），由编组内主节点统一协调，操作员监督整体。'},
+  {k:'M4 失效降级', v:'链路中断或故障时进入：降速、自主返航或就地隐蔽待机，武器保险锁定。仅由系统自动进入、人工确认退出。'},
+  {k:'M5 储运维护', v:'非作战状态，可接检测设备、执行升级与标定；此状态禁止上电驱动。'}
+];
+
+const SHS = [
+  {id:'SH-01', n:'装备总体研制单位（主承包商）', cat:'直接', q:1, el:'活动、数据', need:'方案可实现、进度与经费可控、性能达标、资质与验收', strat:'以接口基线 + 指标基线约束需求，避免不可实现的指标进入基线', sr:'SR-02 / SR-19 / SR-25'},
+  {id:'SH-02', n:'分系统配套供应商', cat:'直接', q:3, el:'物质、能量、数据', need:'接口明确、批量订单、质量责任边界清晰', strat:'先定机械/电气/软件接口标准，再谈指标分配', sr:'SR-02 / SR-22'},
+  {id:'SH-03', n:'使用方：作战部队 / 无人作战分队', cat:'直接', q:1, el:'活动、数据、信号', need:'好用、可靠、续航足、操作负担低、战场生存', strat:'人因设计、训练时长与展开时间直接写成需求条目', sr:'SR-13 / SR-21 / SR-23 / SR-24'},
+  {id:'SH-04', n:'装备试验鉴定机构', cat:'直接', q:1, el:'活动、数据', need:'指标可测、试验可复现、定型结论有依据', strat:'每条需求配验证方法，指标给测试条件与判据', sr:'SR-01 / SR-05 / SR-06'},
+  {id:'SH-05', n:'项目管理单位（军方采办）', cat:'直接', q:1, el:'数据、活动', need:'需求定义准确、合同可控、验收与列装节奏', strat:'需求基线与变更控制，避免研制中指标漂移', sr:'SR-04 / SR-17'},
+  {id:'SH-06', n:'同编队作战单元（战车、无人机、其他无人平台）', cat:'交互', q:3, el:'信号、数据、活动', need:'协同顺畅、互不干扰、态势共享、任务不冲突', strat:'统一消息格式 + EMC 约束 + 任务冲突消解规则', sr:'SR-14 / SR-15 / SR-19'},
+  {id:'SH-07', n:'战场目标（敌方人员/装备/工事）', cat:'交互', q:1, el:'信号、能量、活动', need:'对抗性交互：探测、干扰、摧毁本平台', strat:'不按正向需求处理，转为威胁与约束条目（见 O-02）', sr:'SR-16 / SR-20'},
+  {id:'SH-08', n:'战场环境实体（地形、建筑、民用设施）', cat:'交互', q:4, el:'物质、能量、信号', need:'通过性边界、地图基准、次生威胁（坍塌、火灾）', strat:'转化为环境适应性与通过性指标', sr:'SR-07 / SR-08'},
+  {id:'SH-09', n:'后勤保障分队', cat:'交互', q:3, el:'物质、能量、活动', need:'补给快、换电快、故障易判、备件通用', strat:'模块化、BIT 自检、快换接口', sr:'SR-21 / SR-22'},
+  {id:'SH-10', n:'通信中继节点 / 卫星导航站', cat:'交互', q:3, el:'信号、数据', need:'链路可用性、带宽与时延、覆盖盲区', strat:'把中继依赖与拒止导航写成显式需求', sr:'SR-10 / SR-14'},
+  {id:'SH-11', n:'国防科研管理机构 / 装备预研主管部门', cat:'影响', q:2, el:'数据、活动', need:'技术路线、经费投向、能力体系缺口', strat:'纳入无人系统族谱与长期系统计划', sr:'BR-08'},
+  {id:'SH-12', n:'基础科研院所 / 高校实验室', cat:'影响', q:3, el:'数据、活动', need:'关键技术攻关、成果转化、试验条件', strat:'开放式架构与算法接口，保留技术升级通道', sr:'SR-02'},
+  {id:'SH-13', n:'军工标准与法规制定机构', cat:'影响', q:2, el:'数据', need:'安全、电磁兼容、自主作战规则的可执行性', strat:'合规需求单列，日志与追溯作为验证证据', sr:'SR-16 / SR-17 / SR-19 / SR-25'},
+  {id:'SH-14', n:'国际军控 / 防务研究智库', cat:'影响', q:2, el:'数据', need:'自主武器伦理、作战规则、舆论与政策', strat:'人在回路 + 操作日志留存，形成可解释证据', sr:'SR-17 / SR-25'},
+  {id:'SH-15', n:'战场区域平民与民用资产', cat:'被影响', q:4, el:'能量、物质、活动', need:'附带损伤风险、噪声与心理影响', strat:'精度指标 + ROE + 地理围栏 + 噪声限值', sr:'SR-03 / SR-17 / SR-26'},
+  {id:'SH-16', n:'后方仓储 / 运维基地人员', cat:'被影响', q:4, el:'物质、活动', need:'存储、检测、保养工作量与安全管理要求', strat:'存储状态、自检与电池管理设计', sr:'SR-22'},
+  {id:'SH-17', n:'防务行业竞争对手', cat:'被影响', q:4, el:'数据', need:'竞争格局变化、对手同类装备升级', strat:'不形成需求，仅作为环境与进度约束考虑', sr:'—（环境因素）'},
+  {id:'SH-18', n:'公众与舆论', cat:'被影响', q:4, el:'数据', need:'AI 武器伦理、战争形态变化的社会讨论', strat:'使用规范透明化与操作可追溯', sr:'SR-25'}
+];
+
+const FLIPS = [
+  {q:'要能上楼梯、能过废墟。', a:'目的是进入建筑物与废墟纵深完成搜索，而不是“必须用腿”。', r:'平台应能攀越 ≥0.4 m 垂直台阶、跨越 ≥0.6 m 壕沟，并可在 ≤30° 楼梯上行进。', sr:'SR-06'},
+  {q:'不能一被干扰就瘫。', a:'目的是在 GNSS 拒止与链路受扰时仍能完成任务并安全返回。', r:'GNSS 拒止下应依靠惯性 + 视觉/激光组合导航，1 km 漂移 ≤1%，并可自主返航。', sr:'SR-10 / SR-12'},
+  {q:'操作要简单，战士两天就能用。', a:'目的是缩短形成战斗力周期、降低作战人员认知负担。', r:'经 ≤8 h 训练应能完成基本任务；单操作员可同时监督 ≥3 台平台。', sr:'SR-13 / SR-24'},
+  {q:'打起来要快。', a:'目的是压缩城区近距交战的杀伤链时间。', r:'发现目标到完成授权打击的闭环 ≤60 s，平台侧指令响应 ≤3 s。', sr:'SR-04'}
+];
+
+const BRS = [
+  ['BR-01','在高危地形以无人平台替代人员进入，使人员暴露时间显著下降。','降低作战人员伤亡','暴露时间 ↓≥70%','SR-01 / SR-20 / SR-26'],
+  ['BR-02','建立轮行高速 + 腿行越障的复合机动能力，兼顾效率与通过性。','提升分队机动与突入能力','越障成功率 ≥90% · 转场 ≥20 km/h','SR-05 / SR-06 / SR-07 / SR-09'],
+  ['BR-03','将地面末端节点纳入有人无人协同体系，可受领任务、回传态势、接受监督授权。','形成体系化作战能力','任务接收成功率 ≥98%','SR-10 / SR-12 / SR-14 / SR-15'],
+  ['BR-04','形成侦察—识别—决策—打击闭环，缩短发现到火力作用的时间。','压缩杀伤链','闭环 ≤60 s（不含弹飞）','SR-03 / SR-04'],
+  ['BR-05','降低使用门槛与保障负担，分队级人员短训即可运用与初级维护。','规模化列装与运用','训练 ≤8 h · 换件 ≤30 min','SR-21 / SR-22 / SR-23 / SR-24'],
+  ['BR-06','满足军用无人系统安全、电磁兼容、自主武器规范与交战规则，全过程可追溯。','合规与伦理可接受','评审零重大不符合','SR-16 / SR-17 / SR-18 / SR-19 / SR-25'],
+  ['BR-07','支持多平台编组，单操作员可同时监督多台，形成集群效应。','提升单位人力效能','单人监督 ≥3 台','SR-13 / SR-14'],
+  ['BR-08','采用开放式架构，支持载荷与算法迭代升级，避免快速淘汰。','控制全寿命周期成本','载荷换装 ≤10 min · 可远程升级','SR-02']
+];
+
+const SRS = [
+  ['SR-01','昼夜间及雨雪雾条件下，对 ≥2 km 人员目标、≥4 km 车辆目标完成检测识别，准确率 ≥90%，虚警率 ≤10%。','SH-03/05','必须'],
+  ['SR-02','支持 ≥2 类任务载荷（侦察/打击/处置）互换，单次换装 ≤10 min，机械与电气接口一致。','SH-01/02','必须'],
+  ['SR-03','对静止点目标具备 CEP ≤1 m 的打击或引导精度（依载荷类型）。','SH-03','应该'],
+  ['SR-04','目标确认到完成授权打击闭环 ≤60 s；平台侧指令响应 ≤3 s。','SH-03/05','必须'],
+  ['SR-05','轮行最大速度 ≥20 km/h（硬质路面）、≥8 km/h（越野）；腿行 ≤3 km/h 且步态稳定。','SH-03','必须'],
+  ['SR-06','攀越 ≥0.4 m 垂直台阶、跨越 ≥0.6 m 壕沟，并在 ≤30° 楼梯上稳定通行。','SH-03','必须'],
+  ['SR-07','爬坡 ≥30°（轮行）/ ≥35°（腿行），静态侧倾稳定角 ≥20°。','SH-03','必须'],
+  ['SR-08','涉水深度 ≥0.3 m，可在松软土、沙地、碎石地通行而不失稳。','SH-03','应该'],
+  ['SR-09','轮/腿切换时间 ≤30 s，过程不失稳；切换失败保持当前模式并告警。','SH-03','必须'],
+  ['SR-10','GNSS 拒止下采用惯性 + 视觉/激光组合导航，1 km 漂移 ≤1%。','SH-03','必须'],
+  ['SR-11','自主避障：静态障碍（≥0.3 m）可绕行，动态障碍响应 ≤200 ms。','SH-03','必须'],
+  ['SR-12','链路中断 ≥60 s 自主返航或定点待机并周期重连；重连后恢复任务上下文。','SH-06/10','必须'],
+  ['SR-13','单操作员可同时监督 ≥3 台平台，支持任务分配与一键接管。','SH-03','应该'],
+  ['SR-14','自组网视距通信 ≥5 km，支持 ≥16 节点，端到端时延 ≤200 ms。','SH-10','必须'],
+  ['SR-15','与有人战车、无人机按统一消息格式交换态势与指令，支持标准数据链接入。','SH-06','必须'],
+  ['SR-16','通信加密并具备抗干扰措施（跳频/扩频），受扰环境下保持控制链路可用。','SH-13/07','必须'],
+  ['SR-17','交战遵循人在回路授权：无授权不得自主开火；具备敌我识别与地理围栏约束。','SH-05/13/14','必须'],
+  ['SR-18','致命故障或翻覆时进入失效安全：动力切断、武器保险、上报最后位置并支持回收。','SH-03/09','必须'],
+  ['SR-19','电磁兼容满足军用标准，不对同编队通信与导航设备产生有害干扰。','SH-06/13','必须'],
+  ['SR-20','具备抗毁与防护能力（装甲/三防/关键部件冗余），中弹后仍能自主撤离或休眠。','SH-03','应该'],
+  ['SR-21','续航：轮行 ≥6 h 或 30 km；腿行 ≥3 h；静默待机 ≥24 h；电池快换 ≤5 min。','SH-03/09','必须'],
+  ['SR-22','MTBF ≥200 h，模块级 MTTR ≤30 min；关键模块无工具或少工具快换。','SH-09/16','必须'],
+  ['SR-23','2 人 ≤5 min 完成卸车、展开、自检与入网；撤收同样 ≤5 min。','SH-03/09','必须'],
+  ['SR-24','人因设计：中文界面、戴手套可操作、夜暗可见；≤8 h 训练可独立执行基本任务。','SH-03','必须'],
+  ['SR-25','满足军用无人系统标准与自主武器使用规范，全流程可追溯（日志 ≥30 天）。','SH-13','必须'],
+  ['SR-26','噪声 ≤65 dB @30 m（侦察工况），红外特征可控，满足城区隐蔽接近。','SH-03/15','应该']
+];
+
+const TRACE = {
+  'BR-01':['降低作战人员伤亡','人员暴露时间 ↓≥70%','试验 + 作战效能评估','SR-01 / SR-20 / SR-26'],
+  'BR-02':['提升分队机动与突入能力','速度 · 越障高度 · 切换时间','越障场地试验','SR-05 / SR-06 / SR-07 / SR-09'],
+  'BR-03':['形成体系化作战能力','定位漂移 · 失联判定 · 端到端时延','演示 + 试验','SR-10 / SR-12 / SR-14 / SR-15'],
+  'BR-04':['压缩杀伤链','闭环时间 · CEP','演示 + 靶场试验','SR-03 / SR-04'],
+  'BR-05':['规模化列装与运用','续航 · MTBF/MTTR · 展开时间','演示 + 分析','SR-21 / SR-22 / SR-23 / SR-24'],
+  'BR-06':['合规与伦理可接受','授权链路完整性 · EMC 余量','检查 + 分析 + 试验','SR-16 / SR-17 / SR-18 / SR-19 / SR-25'],
+  'BR-07':['提升单位人力效能','单人监督台数 · 节点数','演示','SR-13 / SR-14'],
+  'BR-08':['控制全寿命周期成本','换装时间 · 接口一致性','检查 + 演示','SR-02']
+};
+
+/* ========== 工具 ========== */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const kvRow = (k,v) => '<div class="row"><div class="kk">'+k+'</div><div class="vv">'+v+'</div></div>';
+
+/* ========== 00 概念链 ========== */
+const chainKv = $('#chainKv');
+function showChain(i){
+  const c = CHAIN[i];
+  $('#chainPanel .pid').textContent = 'CHAIN 0' + (i+1);
+  $('#chainPanel h3').textContent = c.k;
+  $('#chainPanel .tag').textContent = c.lab;
+  chainKv.innerHTML = kvRow('回答什么', c.q) + kvRow('本作业落点', c.a);
+  $$('#chainBtns .fbtn').forEach((b,j)=>b.classList.toggle('on', j===i));
+}
+$$('#chainBtns .fbtn').forEach(b=>b.addEventListener('click',()=>showChain(+b.dataset.chain)));
+showChain(0);
+
+/* ========== 01 方案权衡 ========== */
+const solBtns = $('#solBtns'), solBars = $('#solBars'), solConcl = $('#solConcl');
+Object.keys(SOLS).forEach((n,i)=>{
+  const b = document.createElement('button');
+  b.className = 'fbtn' + (i===0?' on':'');
+  b.textContent = n;
+  b.dataset.sol = n;
+  b.addEventListener('click',()=>showSol(n));
+  solBtns.appendChild(b);
+});
+function showSol(name){
+  const s = SOLS[name];
+  solBars.innerHTML = DIMS.map((d,i)=>
+    '<div class="bar-row"><div class="bl">'+d+'</div><div class="bar"><i data-w="'+s.scores[i]+'"></i></div><div class="bv">'+s.scores[i]+'</div></div>'
+  ).join('');
+  requestAnimationFrame(()=>{ solBars.querySelectorAll('.bar i').forEach(el=>{ el.style.width = el.dataset.w+'%'; }); });
+  solConcl.innerHTML = '<b>结论：</b>' + s.concl;
+  $$('#solBtns .fbtn').forEach(b=>b.classList.toggle('on', b.dataset.sol===name));
+}
+showSol('纯轮式');
+
+/* ========== 01 BR 列表 ========== */
+$('#brList').innerHTML = BRS.map((b,i)=>
+  '<div class="sr"><div class="sid">'+b[0]+'</div><div class="stx"><b>'+b[1]+'</b><br><span style="font-size:11.5px;color:var(--dim)">目标：'+b[2]+' · 度量：'+b[3]+'</span></div><div class="smt"><span class="badge g">'+b[4]+'</span></div></div>'
+).join('');
+
+/* ========== 02 ConOps ========== */
+const tl = $('#tl');
+CONOPS.forEach((c,i)=>{
+  const d = document.createElement('div');
+  d.className = 'tl-i' + (i===0?' on':'');
+  d.dataset.i = i;
+  d.innerHTML = '<div class="tt">'+c.id+'</div><div class="th">'+c.t+'</div>';
+  d.addEventListener('click',()=>showConops(i, true));
+  tl.appendChild(d);
+});
+function showConops(i){
+  const c = CONOPS[i];
+  $('#cnTitle').textContent = c.t;
+  $('#cnTag').textContent = c.id;
+  $('#cnKv').innerHTML = kvRow('活动', c.d) + kvRow('主要输出', c.out) + kvRow('参与', c.who);
+  $$('#tl .tl-i').forEach((d,j)=>d.classList.toggle('on', j===i));
+}
+showConops(0);
+$('#formKv').innerHTML = FORM.map(f=>kvRow(f[0], f[1])).join('');
+
+/* 自动播放 */
+let autoTimer = null;
+$('#autoBtn').addEventListener('click', e=>{
+  if (autoTimer){ clearInterval(autoTimer); autoTimer = null; e.target.textContent = '▶ 自动播放'; return; }
+  e.target.textContent = '❚❚ 暂停';
+  let i = 0;
+  autoTimer = setInterval(()=>{
+    i = (i+1) % CONOPS.length;
+    showConops(i);
+    if (i === CONOPS.length-1){ clearInterval(autoTimer); autoTimer = null; $('#autoBtn').textContent = '▶ 自动播放'; }
+  }, 1600);
+});
+
+/* ========== 03 OpsCon ========== */
+const rail = $('#stageRail');
+STAGES.forEach((s,i)=>{
+  const d = document.createElement('div');
+  d.className = 'rnode' + (i===0?' on':'');
+  d.innerHTML = '<div class="sn">'+s.id+'</div><div class="sn2">'+s.n+'</div>';
+  d.addEventListener('click',()=>showStage(i));
+  rail.appendChild(d);
+});
+function showStage(i){
+  const s = STAGES[i];
+  $('#stId').textContent = s.id;
+  $('#stName').textContent = s.n;
+  $('#stKv').innerHTML = kvRow('参与者', s.who) + kvRow('输入 / 输出', s.io) + kvRow('物理环境', s.env)
+    + kvRow('互操作系统', s.sys) + kvRow('政策约束', s.pol) + kvRow('典型异常', '<span style="color:var(--amber)">'+s.ab+'</span>')
+    + kvRow('派生需求', '<span class="badge c">'+s.sr+'</span>');
+  $$('#stageRail .rnode').forEach((d,j)=>d.classList.toggle('on', j===i));
+}
+showStage(0);
+
+const modeBtns = $('#modeBtns');
+MODES.forEach((m,i)=>{
+  const b = document.createElement('button');
+  b.className = 'fbtn' + (i===0?' on':'');
+  b.textContent = m.k;
+  b.addEventListener('click',()=>{
+    $('#modeText').innerHTML = '<b style="color:var(--neon)">'+m.k+'</b> —— '+m.v;
+    $$('#modeBtns .fbtn').forEach((x,j)=>x.classList.toggle('on', j===i));
+  });
+  modeBtns.appendChild(b);
+});
+$('#modeText').innerHTML = '<b style="color:var(--neon)">'+MODES[0].k+'</b> —— '+MODES[0].v;
+
+/* ========== 04 相关方 ========== */
+const grid = $('#shGrid');
+SHS.forEach(s=>{
+  const d = document.createElement('div');
+  d.className = 'shcard';
+  d.dataset.cat = s.cat;
+  d.dataset.q = s.q;
+  d.dataset.id = s.id;
+  d.innerHTML = '<div class="id">'+s.id+'</div><div class="nm">'+s.n+'</div><div class="cat">'+s.cat+'相关方</div>';
+  d.addEventListener('click',()=>showSh(s.id));
+  grid.appendChild(d);
+});
+function showSh(id){
+  const s = SHS.find(x=>x.id===id);
+  $('#shId').textContent = s.id;
+  $('#shName').textContent = s.n;
+  $('#shCat').textContent = s.cat + '相关方 · 象限 Q' + s.q;
+  $('#shKv').innerHTML = kvRow('交互要素', s.el) + kvRow('核心诉求', s.need) + kvRow('需求应对策略', s.strat) + kvRow('关联需求', '<span class="badge c">'+s.sr+'</span>');
+  $$('.shcard').forEach(c=>c.classList.toggle('on', c.dataset.id===id));
+}
+showSh('SH-03');
+
+function filterSh(cat){
+  $$('.shcard').forEach(c=>{
+    const ok = (cat==='all') || (c.dataset.cat===cat);
+    c.classList.toggle('hide', !ok);
+  });
+}
+$$('#shFilters .fbtn').forEach(b=>b.addEventListener('click',()=>{
+  filterSh(b.dataset.sh);
+  $$('#shFilters .fbtn').forEach(x=>x.classList.toggle('on', x===b));
+  $$('#quad .q').forEach(q=>q.classList.remove('on'));
+}));
+$$('#quad .q').forEach(q=>q.addEventListener('click',()=>{
+  const k = q.dataset.q;
+  const on = q.classList.toggle('on');
+  $$('#quad .q').forEach(x=>{ if(x!==q) x.classList.remove('on'); });
+  if (on){
+    $$('.shcard').forEach(c=>c.classList.toggle('hide', c.dataset.q!==k));
+    $$('#shFilters .fbtn').forEach(x=>x.classList.remove('on'));
+  } else {
+    $$('.shcard').forEach(c=>c.classList.remove('hide'));
+    $('#shFilters .fbtn[data-sh="all"]').classList.add('on');
+  }
+}));
+
+/* ========== 05 原话卡 ========== */
+$('#flips').innerHTML = FLIPS.map((f,i)=>
+  '<div class="flip" data-i="'+i+'"><div class="q2">'+f.q+'</div><div class="hint">点击展开：追问目的 →</div>'
+  +'<div class="ans"><p><b>目的：</b>'+f.a+'</p><p><b>需求：</b>'+f.r+' <span class="k">'+f.sr+'</span></p></div></div>'
+).join('');
+$$('.flip').forEach(f=>f.addEventListener('click',()=>f.classList.toggle('open')));
+
+/* ========== 05 SR 列表 ========== */
+const srList = $('#srList');
+srList.innerHTML = SRS.map(s=>
+  '<div class="sr" data-p="'+s[3]+'"><div class="sid">'+s[0]+'</div><div class="stx">'+s[1]+'</div>'
+  +'<div class="smt"><span class="badge c">'+s[2]+'</span><span class="'+(s[3]==='必须'?'badge y':'badge g')+'">'+s[3]+'</span></div></div>'
+).join('');
+$('#cntM').textContent = SRS.filter(s=>s[3]==='必须').length;
+$('#cntS').textContent = SRS.filter(s=>s[3]==='应该').length;
+let curP = 'all';
+function filterSR(){
+  const q = $('#srSearch').value.trim().toLowerCase();
+  let n = 0;
+  $$('#srList .sr').forEach(r=>{
+    const okP = curP==='all' || r.dataset.p===curP;
+    const okQ = !q || r.textContent.toLowerCase().includes(q);
+    const show = okP && okQ;
+    r.classList.toggle('hide', !show);
+    if (show) n++;
+  });
+  $('#srEmpty').classList.toggle('hide', n>0);
+}
+$$('#srFilters .fbtn').forEach(b=>b.addEventListener('click',()=>{
+  curP = b.dataset.p;
+  $$('#srFilters .fbtn').forEach(x=>x.classList.toggle('on', x===b));
+  filterSR();
+}));
+$('#srSearch').addEventListener('input', filterSR);
+
+/* ========== 06/07 折叠 ========== */
+$$('.acc-h').forEach(h=>h.addEventListener('click',()=>h.parentElement.classList.toggle('open')));
+
+/* ========== 08 追溯 ========== */
+const trBtns = $('#traceBtns');
+Object.keys(TRACE).forEach((k,i)=>{
+  const b = document.createElement('button');
+  b.className = 'fbtn' + (i===0?' on':'');
+  b.textContent = k;
+  b.addEventListener('click',()=>showTrace(k));
+  trBtns.appendChild(b);
+});
+function showTrace(k){
+  const t = TRACE[k];
+  const br = BRS.find(b=>b[0]===k);
+  $('#trId').textContent = k;
+  $('#trName').textContent = br[1].slice(0,18) + '…';
+  $('#trKv').innerHTML = kvRow('业务需求', br[1]) + kvRow('支撑目标', t[0]) + kvRow('关键度量 MOE', t[1])
+    + kvRow('验证方法', t[2]) + kvRow('向下分解', '<span class="badge c">'+t[3]+'</span>');
+  $$('#traceBtns .fbtn').forEach(b=>b.classList.toggle('on', b.textContent===k));
+}
+showTrace('BR-01');
+
+/* ========== 通用 ========== */
+const progress = $('#progress');
+const topBtn = $('#topBtn');
+const steps = $$('.step');
+const ids = steps.map(s=>s.dataset.target);
+
+function goTo(id){
+  const el = document.getElementById(id);
+  if (!el) return;
+  const top = el.getBoundingClientRect().top + window.scrollY - 84;
+  window.scrollTo({top, behavior:'smooth'});
+}
+steps.forEach(s=>s.addEventListener('click',()=>goTo(s.dataset.target)));
+
+let currentIdx = 0;
+window.addEventListener('scroll', ()=>{
+  const h = document.documentElement;
+  progress.style.width = (h.scrollTop/(h.scrollHeight-h.clientHeight)*100) + '%';
+  topBtn.classList.toggle('show', h.scrollTop > 600);
+  let cur = null, idx = 0;
+  ids.forEach((id,i)=>{
+    const el = document.getElementById(id);
+    if (el && el.getBoundingClientRect().top < 220){ cur = id; idx = i; }
+  });
+  currentIdx = idx;
+  steps.forEach(s=>s.classList.toggle('active', s.dataset.target===cur));
+}, {passive:true});
+
+topBtn.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+
+document.addEventListener('keydown', e=>{
+  if (e.target.tagName === 'INPUT') return;
+  const k = e.key.toLowerCase();
+  if (k==='j' || e.key==='ArrowDown'){ e.preventDefault(); goTo(ids[Math.min(currentIdx+1, ids.length-1)]); }
+  if (k==='k' || e.key==='ArrowUp'){ e.preventDefault(); goTo(ids[Math.max(currentIdx-1, 0)]); }
+  if (e.key==='Escape'){
+    $$('.flip.open').forEach(f=>f.classList.remove('open'));
+    $$('.acc-i.open').forEach(a=>a.classList.remove('open'));
+  }
+});
+
+const io = new IntersectionObserver(entries=>{
+  entries.forEach(en=>{ if (en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
+}, {threshold:.08});
+$$('.reveal').forEach(el=>io.observe(el));
+</script>
+
+</body>
+</html>
