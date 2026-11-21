@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>轮腿式无人作战平台 · 系统需求与架构定义 | 复杂系统工程 · 小组作业 03</title>
+<style>
+  :root{
+    --bg:#070b10; --bg2:#0b1118; --panel:#0d1420; --panel2:#101a29;
+    --ink:#d7e2e6; --muted:#5f7280; --dim:#3c4c5a;
+    --line:rgba(90,140,160,.16); --grid:rgba(80,130,150,.07);
+    --neon:#3ef29b; --neon-dim:rgba(62,242,155,.35); --neon-soft:rgba(62,242,155,.08);
+    --amber:#ffb454; --cyan:#4fd8ff; --alert:#ff5a5a; --violet:#b58cff;
+    --serif:"Songti SC","Noto Serif SC","STSong",Georgia,serif;
+    --sans:"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
+    --mono:"SF Mono","JetBrains Mono","Cascadia Code",Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.8;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  ::selection{background:var(--neon);color:#04120b}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 32px;position:relative}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background-image:
+    linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:48px 48px}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.3;
+    background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.14) 3px 4px)}
+  #progress{position:fixed;top:0;left:0;height:2px;background:var(--neon);width:0;z-index:120;box-shadow:0 0 8px var(--neon-dim)}
+
+  .ticker{background:var(--bg2);border-bottom:1px solid var(--line);overflow:hidden;position:sticky;top:0;z-index:95;height:24px;display:flex;align-items:center}
+  .ticker .tk{white-space:nowrap;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--dim);animation:tick 36s linear infinite}
+  .ticker .tk b{color:var(--neon);font-weight:500}
+  .ticker .tk i{color:var(--amber);font-style:normal}
+  @keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  nav{position:sticky;top:24px;z-index:90;background:rgba(7,11,16,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:54px}
+  .brand{display:flex;align-items:center;gap:11px}
+  .brand .dot{width:7px;height:7px;border-radius:50%;background:var(--neon);box-shadow:0 0 10px var(--neon-dim);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .brand .zh{font-family:var(--serif);font-weight:600;font-size:15px;letter-spacing:1px}
+  .brand .en{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
+  nav .links a{color:var(--muted);text-decoration:none;font-family:var(--mono);font-size:11px;margin-left:16px;letter-spacing:.5px;transition:color .2s}
+  nav .links a:hover{color:var(--neon);text-shadow:0 0 8px var(--neon-dim)}
+
+  header{position:relative;padding:70px 0 58px;border-bottom:1px solid var(--line);overflow:hidden}
+  header .halo{position:absolute;left:46%;top:-200px;width:680px;height:680px;transform:translateX(-50%);
+    background:radial-gradient(circle,var(--neon-soft) 0%,transparent 62%);pointer-events:none}
+  .hero{display:grid;grid-template-columns:1fr 300px;gap:52px;align-items:center}
+  .hero .kicker{font-family:var(--mono);font-size:10.5px;letter-spacing:4px;color:var(--neon);text-transform:uppercase;display:flex;align-items:center;gap:14px;margin-bottom:18px}
+  .hero .kicker::before{content:"";width:32px;height:1px;background:var(--neon);box-shadow:0 0 6px var(--neon-dim)}
+  .hero h1{font-family:var(--serif);font-size:39px;font-weight:600;line-height:1.34;letter-spacing:2px;color:#eef6f2;text-shadow:0 0 24px rgba(62,242,155,.14)}
+  .hero h1 em{font-style:normal;color:var(--neon)}
+  .hero .chain{font-family:var(--mono);font-size:12px;letter-spacing:1.4px;color:var(--muted);margin-top:18px;border:1px solid var(--line);display:inline-block;padding:8px 16px;background:rgba(13,20,32,.7)}
+  .hero .chain b{color:var(--neon);font-weight:500}
+  .hero .chain i{color:var(--amber);font-style:normal}
+  .hero .lede{font-size:14px;color:#8fa1ab;max-width:620px;margin-top:16px}
+
+  .stack{border:1px solid var(--line);background:rgba(11,17,24,.7)}
+  .stk{padding:11px 14px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:baseline;transition:.2s}
+  .stk:last-child{border-bottom:none}
+  .stk:hover{background:var(--neon-soft)}
+  .stk .n{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1.4px;flex:0 0 54px}
+  .stk .t{font-size:12.5px;color:#cfdadf}
+  .stk .t i{display:block;font-style:normal;font-size:11px;color:var(--muted)}
+  .stk.a .t{color:var(--amber)} .stk.c .t{color:var(--cyan)} .stk.v .t{color:var(--violet)}
+
+  .stepper-bar{background:rgba(11,17,24,.9);border-bottom:1px solid var(--line);position:sticky;top:78px;z-index:80}
+  .stepper{display:flex}
+  .step{flex:1;padding:11px 1px 10px;text-align:center;cursor:pointer;border-right:1px solid var(--line);transition:background .25s;position:relative}
+  .step:last-child{border-right:none}
+  .step::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:transparent;transition:all .25s}
+  .step:hover{background:var(--neon-soft)}
+  .step .no{font-family:var(--mono);font-size:9px;letter-spacing:1.6px;color:var(--dim)}
+  .step .name{font-size:12px;font-weight:600;margin-top:2px;color:#a9b8c0}
+  .step.active{background:var(--neon-soft)}
+  .step.active::after{background:var(--neon);box-shadow:0 0 8px var(--neon-dim)}
+  .step.active .name,.step.active .no{color:var(--neon)}
+
+  section.level{padding:56px 0;border-bottom:1px solid var(--line);position:relative;z-index:1}
+  .lv-head{display:flex;align-items:flex-end;gap:20px}
+  .lv-num{font-family:var(--mono);font-size:56px;font-weight:600;line-height:.82;color:transparent;-webkit-text-stroke:1px rgba(90,140,160,.3);user-select:none}
+  .lv-tag{font-family:var(--mono);font-size:9.5px;letter-spacing:2.6px;text-transform:uppercase;display:inline-flex;align-items:center;gap:9px}
+  .lv-tag::before{content:"◈";font-size:11px}
+  .lv-head h2{font-family:var(--serif);font-size:24px;font-weight:600;margin-top:6px;letter-spacing:1px;color:#eef6f2}
+  .lv-head .en{font-size:11.5px;color:var(--muted);margin-top:5px;letter-spacing:.5px}
+  .lv-desc{font-size:13.5px;color:#9fb0ba;max-width:900px;margin:16px 0 22px}
+  .lv-desc b{color:var(--neon);font-weight:600}
+  .lv-desc code,.k{font-family:var(--mono);font-size:11.5px;color:var(--amber);background:rgba(255,180,84,.08);padding:1px 5px;border:1px solid rgba(255,180,84,.2)}
+  .sec-sub{display:flex;align-items:center;gap:11px;font-family:var(--serif);font-size:17px;font-weight:600;letter-spacing:.5px;color:#e7efe9;margin:36px 0 12px}
+  .sec-sub::before{content:"";width:16px;height:1px;background:var(--cyan);opacity:.65}
+  .sec-sub span{font-family:var(--mono);font-size:10.5px;font-weight:400;letter-spacing:1.6px;color:var(--cyan);opacity:.9;padding:2px 7px;border:1px solid rgba(90,220,230,.25);background:rgba(90,220,230,.04)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+  .cell{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);padding:18px 18px 16px;position:relative;transition:border-color .25s,transform .25s,box-shadow .25s}
+  .cell:hover{border-color:var(--neon-dim);transform:translateY(-3px);box-shadow:0 8px 26px rgba(62,242,155,.08)}
+  .cell .idx{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--dim)}
+  .cell h3{font-family:var(--serif);font-size:15.5px;font-weight:600;margin:7px 0 6px;color:#e7efe9}
+  .cell p{font-size:12.2px;color:var(--muted);line-height:1.72}
+  .cell::before{content:"";position:absolute;top:0;left:0;width:30px;height:2px;background:var(--neon);box-shadow:0 0 8px var(--neon-dim)}
+  .cell.a::before{background:var(--amber);box-shadow:0 0 8px rgba(255,180,84,.4)}
+  .cell.c::before{background:var(--cyan);box-shadow:0 0 8px rgba(79,216,255,.4)}
+  .cell.v::before{background:var(--violet);box-shadow:0 0 8px rgba(181,140,255,.4)}
+  .cell.a h3{color:var(--amber)} .cell.c h3{color:var(--cyan)} .cell.v h3{color:var(--violet)}
+
+  .filters{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 14px;align-items:center}
+  .fbtn{font-family:var(--mono);font-size:10.5px;letter-spacing:1px;padding:6px 13px;border:1px solid var(--line);background:rgba(13,20,32,.7);color:var(--muted);cursor:pointer;transition:.18s}
+  .fbtn:hover{border-color:var(--neon-dim);color:var(--ink)}
+  .fbtn.on{background:var(--neon-soft);border-color:var(--neon);color:var(--neon)}
+  .fbtn .c{opacity:.55;margin-left:4px}
+
+  .rail{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin:6px 0 14px}
+  .rnode{border:1px solid var(--line);background:rgba(13,20,32,.7);padding:9px 4px;cursor:pointer;text-align:center;transition:.18s}
+  .rnode .sn{font-family:var(--mono);font-size:9.5px;color:var(--dim);letter-spacing:1px}
+  .rnode .sn2{font-size:11px;color:#a9b8c0;margin-top:2px;line-height:1.4}
+  .rnode:hover{border-color:var(--neon-dim)}
+  .rnode.on{border-color:var(--neon);background:var(--neon-soft);box-shadow:0 0 14px rgba(62,242,155,.12)}
+  .rnode.on .sn,.rnode.on .sn2{color:var(--neon)}
+
+  .panel{border:1px solid var(--line);background:rgba(13,20,32,.75);padding:18px 22px;position:relative;overflow:hidden}
+  .panel::before{content:"";position:absolute;top:0;left:0;width:44px;height:2px;background:var(--neon);box-shadow:0 0 8px var(--neon-dim)}
+  .panel .ph{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+  .panel .ph .pid{font-family:var(--mono);font-size:11px;color:var(--neon);letter-spacing:1.5px}
+  .panel .ph h3{font-family:var(--serif);font-size:16.5px;font-weight:600;color:#e7efe9}
+  .panel .ph .tag{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--muted);letter-spacing:1px}
+  .kv{border-top:1px solid var(--line)}
+  .kv .row{display:grid;grid-template-columns:96px 1fr;gap:14px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.4px}
+  .kv .row:last-child{border-bottom:none}
+  .kv .kk{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;color:var(--dim);padding-top:3px}
+  .kv .vv{color:#9fb0ba;line-height:1.75}
+  .kv .vv b{color:#dbe7e2}
+  .badge{display:inline-block;font-family:var(--mono);font-size:9.5px;padding:2px 7px;border:1px solid;letter-spacing:.8px;margin:2px 4px 2px 0}
+  .badge.g{color:var(--neon);border-color:var(--neon-dim);background:var(--neon-soft)}
+  .badge.y{color:var(--amber);border-color:rgba(255,180,84,.35);background:rgba(255,180,84,.07)}
+  .badge.c{color:var(--cyan);border-color:rgba(79,216,255,.35);background:rgba(79,216,255,.07)}
+  .badge.v{color:var(--violet);border-color:rgba(181,140,255,.35);background:rgba(181,140,255,.07)}
+  .badge.r{color:var(--alert);border-color:rgba(255,90,90,.35);background:rgba(255,90,90,.07)}
+
+  .duo{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;margin-top:20px}
+  @media (max-width:900px){ .duo{grid-template-columns:1fr} }
+
+  .tl{position:relative;padding-left:22px;border-left:1px solid var(--line)}
+  .tl-i{position:relative;padding:8px 0 8px 6px;cursor:pointer;transition:.2s}
+  .tl-i::before{content:"";position:absolute;left:-28px;top:16px;width:9px;height:9px;border-radius:50%;background:var(--bg);border:2px solid var(--dim);transition:.2s}
+  .tl-i:hover::before{border-color:var(--neon)}
+  .tl-i.on::before{border-color:var(--neon);box-shadow:0 0 10px var(--neon-dim);background:var(--neon)}
+  .tl-i .tt{font-family:var(--mono);font-size:9.5px;letter-spacing:1.5px;color:var(--dim)}
+  .tl-i .th{font-family:var(--serif);font-size:14.5px;color:#cfdadf;margin-top:2px;line-height:1.5}
+  .tl-i.on .th,.tl-i.on .tt{color:var(--neon)}
+
+  .acc{border:1px solid var(--line);background:rgba(13,20,32,.55)}
+  .acc-i{border-bottom:1px solid var(--line)}
+  .acc-i:last-child{border-bottom:none}
+  .acc-h{display:flex;align-items:baseline;gap:14px;padding:11px 18px;cursor:pointer;transition:.18s}
+  .acc-h:hover{background:var(--neon-soft)}
+  .acc-h .no{font-family:var(--mono);font-size:10.5px;color:var(--neon);letter-spacing:1px;flex:0 0 48px}
+  .acc-h h4{font-family:var(--serif);font-size:14.5px;font-weight:600;color:#dfe9e4;flex:0 0 auto}
+  .acc-h .sum{font-size:11.5px;color:var(--dim);margin-left:auto;text-align:right;max-width:50%;line-height:1.6}
+  .acc-h .arw{font-family:var(--mono);font-size:11px;color:var(--dim);flex:0 0 12px;transition:transform .25s}
+  .acc-i.open .acc-h{background:rgba(62,242,155,.05);border-bottom:1px solid var(--line)}
+  .acc-i.open .acc-h .arw{transform:rotate(90deg);color:var(--neon)}
+  .acc-i.open .acc-h h4{color:var(--neon)}
+  .acc-b{display:none;padding:13px 20px 16px 56px}
+  .acc-i.open .acc-b{display:block;animation:fadeIn .3s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .acc-b p{font-size:12.3px;color:#96a8b2;line-height:1.8;margin:3px 0}
+  .acc-b p b{color:#d7e2e6;font-weight:600}
+  .acc-b ul{list-style:none;margin:4px 0}
+  .acc-b li{font-size:12.2px;color:#96a8b2;line-height:1.78;padding-left:14px;position:relative;margin:2px 0}
+  .acc-b li::before{content:"▪";position:absolute;left:0;top:1px;color:var(--neon);opacity:.7;font-size:9px}
+  .acc-b li b{color:#d7e2e6;font-weight:600}
+  .acc-b .note{border-left:2px solid var(--amber);background:rgba(255,180,84,.05);padding:8px 12px;margin:8px 0;font-size:12px;color:#b9a98d}
+  .acc-b .note b{color:var(--amber)}
+  .acc-b .rid{font-family:var(--mono);font-size:10px;color:var(--cyan);letter-spacing:.4px}
+
+  .srlist{border:1px solid var(--line);background:rgba(13,20,32,.55)}
+  #frList{display:grid;grid-template-columns:1fr 1fr}
+  #frList .sr:nth-child(odd){border-right:1px solid var(--line)}
+  #frList .sr:nth-last-child(2){border-bottom:none}
+  .sr{display:flex;gap:12px;padding:8px 16px;border-bottom:1px solid var(--line);align-items:flex-start;transition:background .18s}
+  .sr:last-child{border-bottom:none}
+  .sr:hover{background:var(--neon-soft)}
+  .sr .sid{font-family:var(--mono);font-size:11px;color:var(--cyan);flex:0 0 54px;padding-top:1px}
+  .sr .stx{flex:1;font-size:12.2px;color:#9fb0ba;line-height:1.7}
+  .sr .smt{flex:0 0 auto;display:flex;gap:6px;align-items:center;padding-top:1px}
+  .sr .src{font-family:var(--mono);font-size:9.5px;color:var(--dim)}
+  .empty{padding:20px;text-align:center;font-family:var(--mono);font-size:11.5px;color:var(--dim)}
+  .search{flex:1;min-width:150px;font-family:var(--mono);font-size:11.5px;padding:6px 12px;background:rgba(13,20,32,.8);border:1px solid var(--line);color:var(--ink);outline:none}
+  .search:focus{border-color:var(--neon-dim)}
+  .search::placeholder{color:var(--dim)}
+
+  /* 架构三视图 */
+  .archtabs{display:flex;gap:0;border:1px solid var(--line);margin-bottom:14px;flex-wrap:wrap}
+  .atab{flex:1;min-width:150px;padding:10px 14px;text-align:center;cursor:pointer;background:rgba(13,20,32,.7);border-right:1px solid var(--line);transition:.18s}
+  .atab:last-child{border-right:none}
+  .atab .an{font-family:var(--mono);font-size:9px;letter-spacing:1.6px;color:var(--dim)}
+  .atab .at{font-size:12.5px;color:#a9b8c0;margin-top:2px}
+  .atab:hover{background:rgba(62,242,155,.05)}
+  .atab.on{background:var(--neon-soft)}
+  .atab.on .at,.atab.on .an{color:var(--neon)}
+  .aview{display:none}
+  .aview.on{display:block;animation:fadeIn .3s ease}
+
+  /* SVG */
+  .svgbox{border:1px solid var(--line);background:rgba(9,14,20,.85);padding:8px;overflow-x:auto}
+  .svgbox svg{display:block;width:100%;height:auto;min-width:640px}
+  svg .nd{cursor:pointer}
+  svg .nd rect{fill:#0d1420;stroke:rgba(90,140,160,.35);stroke-width:1;transition:.2s}
+  svg .nd text{fill:#cfdadf;font-size:11px;font-family:var(--sans);pointer-events:none}
+  svg .nd .sub{fill:#5f7280;font-size:8.5px;font-family:var(--mono);letter-spacing:.6px}
+  svg .nd:hover rect{stroke:var(--neon)}
+  svg .nd.on rect{fill:rgba(62,242,155,.1);stroke:var(--neon);stroke-width:1.5}
+  svg .nd[data-k="ctrl"] rect{stroke:rgba(62,242,155,.5)}
+  svg .nd[data-k="act"] rect{stroke:rgba(255,180,84,.5)}
+  svg .nd[data-k="proc"] rect{stroke:rgba(79,216,255,.5)}
+  svg .nd[data-k="sens"] rect{stroke:rgba(181,140,255,.5)}
+  svg .nd[data-k="ext"] rect{stroke:rgba(120,140,150,.32);stroke-dasharray:3 3}
+  svg .el{stroke:rgba(140,165,180,.45);stroke-width:1.2;fill:none}
+  svg .el.ctl{stroke:rgba(62,242,155,.5)}
+  svg .el.fb{stroke:rgba(181,140,255,.55);stroke-dasharray:5 4}
+  svg .el.env{stroke:rgba(120,140,150,.4);stroke-dasharray:2 4}
+  svg .calb{fill:var(--amber);font-size:8px;font-family:var(--mono);letter-spacing:.5px}
+  svg .flb{fill:#9a86e8;font-size:8px;font-family:var(--mono);letter-spacing:.5px}
+  svg .tl2{fill:#5f7280;font-size:8.5px;font-family:var(--mono);letter-spacing:1.2px}
+
+  /* UCA */
+  .ucawrap{border:1px solid var(--line);background:rgba(13,20,32,.6)}
+  .ucah{display:grid;grid-template-columns:64px 1fr;background:rgba(11,17,24,.9);border-bottom:1px solid var(--line)}
+  .ucah div{font-family:var(--mono);font-size:9px;letter-spacing:1.2px;color:var(--dim);padding:7px 10px;text-transform:uppercase}
+  .ucar{display:grid;grid-template-columns:64px 1fr;border-bottom:1px solid var(--line);font-size:12px}
+  .ucar:last-child{border-bottom:none}
+  .ucar .ut{font-family:var(--mono);font-size:9.5px;color:var(--amber);padding:9px 10px;line-height:1.5;letter-spacing:.4px}
+  .ucar .ub{padding:8px 12px;color:#9fb0ba;line-height:1.7}
+  .ucar .ub b{color:#dbe7e2}
+  .ucar .ub .u{font-family:var(--mono);font-size:10px;color:var(--cyan);margin-right:6px}
+  .ucar .ub .h{font-family:var(--mono);font-size:9.5px;color:var(--alert);margin-left:6px}
+  .ucar:hover{background:var(--neon-soft)}
+
+  /* 故障注入 */
+  .faults{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px;margin:12px 0}
+  .flt{border:1px solid var(--line);background:rgba(13,20,32,.7);padding:11px 13px;cursor:pointer;transition:.18s;position:relative}
+  .flt .fn{font-family:var(--mono);font-size:9px;letter-spacing:1.4px;color:var(--dim)}
+  .flt .ft{font-size:12.2px;color:#cfdadf;margin-top:3px;line-height:1.55}
+  .flt:hover{border-color:var(--alert);background:rgba(255,90,90,.04)}
+  .flt.on{border-color:var(--alert);background:rgba(255,90,90,.07);box-shadow:0 0 16px rgba(255,90,90,.1)}
+  .flt.on .fn{color:var(--alert)}
+  .chain{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+  .ch{border:1px solid var(--line);background:rgba(11,17,24,.8);padding:5px 10px;font-size:11.5px;color:#9fb0ba;position:relative}
+  .ch.ok{border-color:var(--neon-dim);color:var(--neon);background:var(--neon-soft)}
+  .ch.warn{border-color:rgba(255,180,84,.4);color:var(--amber);background:rgba(255,180,84,.06)}
+  .ch.bad{border-color:rgba(255,90,90,.4);color:var(--alert);background:rgba(255,90,90,.06)}
+  .ch-arrow{color:var(--dim);font-family:var(--mono);font-size:11px}
+
+  /* 追溯矩阵 */
+  .matrix{width:100%;border-collapse:collapse;font-size:11.5px}
+  .matrix th{font-family:var(--mono);font-size:9px;letter-spacing:1.2px;color:var(--dim);text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);text-transform:uppercase}
+  .matrix td{padding:7px 9px;border-bottom:1px solid var(--line);color:#9fb0ba;vertical-align:top}
+  .matrix tr:last-child td{border-bottom:none}
+  .matrix td:first-child{font-family:var(--mono);color:var(--cyan);white-space:nowrap}
+  .matrix tr:hover td{background:rgba(62,242,155,.04)}
+  .matrix .bold{color:#dbe7e2}
+
+  .tag-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .tag{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;padding:4px 11px;border:1px solid var(--line);background:rgba(13,20,32,.7);color:var(--muted)}
+  .tag::before{content:"▸ ";color:var(--neon)}
+
+  footer{padding:40px 0 56px;color:var(--muted);font-size:12.5px;position:relative;z-index:1}
+  footer .rule{height:1px;background:var(--line);margin-bottom:22px;position:relative}
+  footer .rule::after{content:"";position:absolute;right:0;top:-3px;width:7px;height:7px;background:var(--neon);animation:pulse 2s infinite}
+  footer .foot-links a{color:var(--neon);text-decoration:none;margin-right:20px;font-family:var(--mono);font-size:12px;letter-spacing:1px}
+  footer .foot-links a:hover{text-shadow:0 0 8px var(--neon-dim)}
+  footer .kbdhint{margin-top:12px;font-family:var(--mono);font-size:10px;letter-spacing:1.4px;color:var(--dim)}
+  footer .kbdhint b{color:var(--muted);border:1px solid var(--line);padding:1px 6px;margin:0 3px}
+  .top-btn{position:fixed;right:24px;bottom:24px;width:42px;height:42px;background:var(--panel2);color:var(--neon);border:1px solid var(--neon-dim);font-family:var(--mono);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;z-index:110}
+  .top-btn.show{opacity:1;pointer-events:auto}
+  .top-btn:hover{background:var(--neon-soft);box-shadow:0 0 16px var(--neon-dim)}
+
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.in{opacity:1;transform:none}
+  .hide{display:none!important}
+
+  @media (max-width:980px){
+    .hero{grid-template-columns:1fr;gap:26px}
+    .hero h1{font-size:27px}
+    .stack{display:grid;grid-template-columns:1fr 1fr}
+    .stk{border-right:1px solid var(--line)}
+    .rail{grid-template-columns:repeat(4,1fr)}
+    .lv-num{font-size:38px}
+    .step .name{font-size:9.5px}
+    nav .links{display:none}
+    .acc-h .sum{display:none}
+    .sr{flex-wrap:wrap}
+    .sr .smt{margin-left:66px}
+    .ucah{display:none}
+    #frList{grid-template-columns:1fr}
+    #frList .sr:nth-child(odd){border-right:none}
+  }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L7,4 L0,8 z" fill="rgba(150,175,190,.7)"/></marker>
+  <marker id="ar-g" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L7,4 L0,8 z" fill="rgba(62,242,155,.8)"/></marker>
+  <marker id="ar-v" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L7,4 L0,8 z" fill="rgba(181,140,255,.85)"/></marker>
+  <marker id="ar-a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L7,4 L0,8 z" fill="rgba(255,180,84,.85)"/></marker>
+</defs></svg>
+
+<div class="ticker"><div class="tk">
+  <b>PHASE: SYSTEM DEFINITION</b> · StRS <b>26</b> → SyRS <b>FR 16 / PR 14 / IR 08 / QR 08</b> · 架构: 功能/逻辑/物理 · STPA: <i>4 步</i> · SAF <b>12</b> · DUE 2026.11.25 12:00 · <b>PHASE: SYSTEM DEFINITION</b> · StRS <b>26</b> → SyRS <b>FR 16 / PR 14 / IR 08 / QR 08</b> · 架构: 功能/逻辑/物理 · STPA: <i>4 步</i> · SAF <b>12</b> · DUE 2026.11.25 12:00 ·
+</div></div>
+
+<nav>
+  <div class="wrap">
+    <div class="brand">
+      <span class="dot"></span>
+      <a href="index.html" style="text-decoration:none;color:inherit"><span class="zh">轮腿式无人作战平台</span></a>
+      <span class="en">System Definition</span>
+    </div>
+    <div class="links">
+      <a href="assignment2.html">← 作业2</a>
+      <a href="#s1">需求</a>
+      <a href="#s2">规格书</a>
+      <a href="#s3">架构</a>
+      <a href="#s4">控制框图</a>
+      <a href="#s5">STPA</a>
+      <a href="#s6">安全</a>
+      <a href="#s7">追溯</a>
+    </div>
+  </div>
+</nav>
+
+<header>
+  <div class="halo"></div>
+  <div class="wrap hero">
+    <div>
+      <div class="kicker">Complex Systems Engineering · Assignment 03</div>
+      <h1>系统需求定义<br><em>与架构定义</em>·STPA 安全分析</h1>
+      <div class="chain"><b>StRS</b> → <b>SyRS</b> → 初始架构 <i>功能/逻辑/物理</i> → STPA → <i>安全需求与安全架构</i></div>
+      <p class="lede">这一阶段做三件事：把相关方提的要求翻成整机可以验收的技术指标，写成系统需求规格书；再把指标落到功能、逻辑、物理三层架构里。然后拿控制结构做一遍 STPA，看控制链条会在哪里断，把这些失效转成安全需求，反过来加固架构。</p>
+    </div>
+    <div class="stack">
+      <div class="stk"><div class="n">STEP 01</div><div class="t">系统需求定义<i>做什么：功能 / 性能 / 约束</i></div></div>
+      <div class="stk c"><div class="n">STEP 02</div><div class="t">系统架构定义<i>怎么组织：三视图 + 控制结构</i></div></div>
+      <div class="stk a"><div class="n">STEP 03</div><div class="t">STPA 系统理论过程分析<i>哪里会失控：UCA + 损失场景</i></div></div>
+      <div class="stk v"><div class="n">STEP 04</div><div class="t">安全需求与安全架构<i>怎么防：独立安全通道</i></div></div>
+    </div>
+  </div>
+</header>
+
+<div class="stepper-bar">
+  <div class="wrap" style="padding:0">
+  <div class="stepper">
+    <div class="step" data-target="s1"><div class="no">01</div><div class="name">需求</div></div>
+    <div class="step" data-target="s2"><div class="no">02</div><div class="name">规格书</div></div>
+    <div class="step" data-target="s3"><div class="no">03</div><div class="name">架构</div></div>
+    <div class="step" data-target="s4"><div class="no">04</div><div class="name">控制框图</div></div>
+    <div class="step" data-target="s5"><div class="no">05</div><div class="name">STPA</div></div>
+    <div class="step" data-target="s6"><div class="no">06</div><div class="name">安全</div></div>
+    <div class="step" data-target="s7"><div class="no">∑</div><div class="name">追溯</div></div>
+  </div>
+  </div>
+</div>
+
+<!-- ============ 01 系统需求 ============ -->
+<section class="level" id="s1">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">01</div>
+      <div>
+        <div class="lv-tag" style="color:var(--neon)">系统需求 / REQUIREMENTS</div>
+        <h2>功能与性能：FR-01 ~ FR-16 · PR-01 ~ PR-14</h2>
+        <div class="en">SyRS §3.2 Functional · §3.3 Performance · §3.4–3.13 Constraints</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">需求分两路写。先说系统必须做什么：整机划成 8 个功能域，每域给出输入、输出、触发条件、异常处理和对应条目，共 16 条功能需求。再说做到什么程度：性能指标带条件与判据，附度量方式和验证途径，共 14 条；环境、人因、信息安全、保障一类归到约束需求。</p>
+
+    <h3 class="sec-sub"><span>01.1</span>功能需求 · 八个功能域</h3>
+    <p class="lv-desc" style="margin:0 0 14px">功能需求只写做什么、不写怎么做。点选左侧功能域，看它的输入输出与失效模式。</p>
+<div class="rail" id="fnRail"></div>
+    <div class="panel" id="fnPanel"></div>
+
+    <h3 class="sec-sub"><span>FR</span>全部功能需求 · 16 条</h3>
+    <div class="srlist" id="frList"></div>
+    <p style="font-size:11.5px;color:var(--dim);margin-top:8px;font-family:var(--mono)">编号规则：FR-<span style="color:var(--cyan)">nn</span> · 每条单一、可验证、与实现无关（除注明由架构约束强制者）</p>
+
+    <h3 class="sec-sub"><span>01.2</span>性能需求 · 带条件与判据</h3>
+    <p class="lv-desc" style="margin:0 0 14px">性能需求离开条件和判据就没法验证，因此每条都写清在什么状态下、达到什么值、怎么测。</p>
+<div class="duo" style="grid-template-columns:1.15fr .85fr">
+      <div>
+        <div class="filters" id="prFilters"></div>
+        <div class="srlist" id="prList"></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="pid">MOE</div><h3>关键性能与效能度量</h3><div class="tag">TOP 6</div></div>
+        <div id="prBars" style="margin-top:6px"></div>
+        <div class="note" style="border-left:2px solid var(--amber);background:rgba(255,180,84,.05);padding:8px 12px;margin-top:14px;font-size:11.8px;color:#b9a98d">条形长度为<b style="color:var(--amber)">需求目标值</b>的相对示意，用于内部比较，非实测数据。</div>
+      </div>
+    </div>
+
+    <h3 class="sec-sub"><span>01.3</span>约束类与跨域需求 · 8 类</h3>
+    <div class="acc" id="qrAcc"></div>
+  </div>
+</section>
+
+<!-- ============ 02 系统需求规格书 ============ -->
+<section class="level" id="s2" style="background:rgba(11,17,24,.5)">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">02</div>
+      <div>
+        <div class="lv-tag" style="color:var(--cyan)">系统需求规格书 / SyRS</div>
+        <h2>规格书：边界、接口与 15 章成文</h2>
+        <div class="en">System Requirements Specification · 15 章 + 追溯</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">规格书按标准大纲的章节顺序成文。第 1 章先划边界：这里的「系统」只指<b>平台整机</b>。指挥所、无人机、保障设备、弹药都算外部实体，只通过 <code>IC-01 ~ IC-08</code> 和整机打交道。边界划不清，后面的功能与接口就会互相侵占。</p>
+
+    <h3 class="sec-sub"><span>02.1</span>系统上下文与外部接口</h3>
+<div class="svgbox reveal">
+        <svg viewBox="0 0 900 540" id="ctxSvg" xmlns="http://www.w3.org/2000/svg">
+          <!-- 中心系统 -->
+          <g class="nd on" data-nid="sys" data-k="proc">
+            <rect x="330" y="215" width="240" height="96" rx="0"/>
+            <text x="450" y="248" text-anchor="middle" style="font-size:13px">轮腿式无人作战平台</text>
+            <text x="450" y="268" text-anchor="middle" class="sub">SYSTEM OF INTEREST</text>
+            <text x="450" y="288" text-anchor="middle" class="sub">整机 · 计算/感知/驱动/能源/链路</text>
+          </g>
+          <!-- 外部实体 -->
+          <g class="nd" data-nid="op" data-k="ext"><rect x="40" y="80" width="200" height="56"/><text x="140" y="104" text-anchor="middle">操作员控制终端</text><text x="140" y="120" text-anchor="middle" class="sub">IC-01 · 人机接口</text></g>
+          <g class="nd" data-nid="c2" data-k="ext"><rect x="660" y="80" width="200" height="56"/><text x="760" y="104" text-anchor="middle">指挥所 / 指挥信息系统</text><text x="760" y="120" text-anchor="middle" class="sub">IC-02 · 任务与授权</text></g>
+          <g class="nd" data-nid="pl" data-k="ext"><rect x="350" y="46" width="200" height="52"/><text x="450" y="70" text-anchor="middle">任务载荷（侦察/打击）</text><text x="450" y="86" text-anchor="middle" class="sub">IC-05 · 快换接口</text></g>
+          <g class="nd" data-nid="gn" data-k="ext"><rect x="40" y="228" width="200" height="56"/><text x="140" y="252" text-anchor="middle">卫星导航 / 授时</text><text x="140" y="268" text-anchor="middle" class="sub">IC-07 · GNSS</text></g>
+          <g class="nd" data-nid="env" data-k="ext"><rect x="660" y="228" width="200" height="56"/><text x="760" y="252" text-anchor="middle">战场环境（地形/干扰/敌方）</text><text x="760" y="268" text-anchor="middle" class="sub">非接口 · 约束</text></g>
+          <g class="nd" data-nid="uav" data-k="ext"><rect x="40" y="378" width="200" height="56"/><text x="140" y="402" text-anchor="middle">侦察/中继无人机</text><text x="140" y="418" text-anchor="middle" class="sub">IC-04 · 中继与态势</text></g>
+          <g class="nd" data-nid="team" data-k="ext"><rect x="660" y="378" width="200" height="56"/><text x="760" y="402" text-anchor="middle">编队友军（战车/无人平台）</text><text x="760" y="418" text-anchor="middle" class="sub">IC-03 · 协同消息</text></g>
+          <g class="nd" data-nid="log" data-k="ext"><rect x="350" y="430" width="200" height="56"/><text x="450" y="454" text-anchor="middle">保障设备（充电/检测）</text><text x="450" y="470" text-anchor="middle" class="sub">IC-06 · 保障接口</text></g>
+          <!-- 连线 -->
+          <path class="el env" d="M240,108 L330,215" marker-end="url(#ar)"/>
+          <path class="el env" d="M660,108 L570,215" marker-end="url(#ar)"/>
+          <path class="el" d="M450,98 L450,215" marker-end="url(#ar)"/>
+          <path class="el env" d="M240,256 L330,256" marker-end="url(#ar)"/>
+          <path class="el env" d="M660,256 L570,256" marker-end="url(#ar)"/>
+          <path class="el env" d="M240,406 L330,300" marker-end="url(#ar)"/>
+          <path class="el env" d="M660,406 L570,300" marker-end="url(#ar)"/>
+          <path class="el" d="M450,430 L450,311" marker-end="url(#ar)"/>
+          <text x="150" y="524" class="tl2">— 数据/控制接口</text>
+          <text x="330" y="524" class="tl2">-- 约束/环境关系</text>
+        </svg>
+    </div>
+    <div class="duo" style="grid-template-columns:1.15fr .85fr;align-items:start;margin-top:16px">
+      <div class="panel" id="extPanel"></div>
+      <div class="panel">
+        <div class="ph"><div class="pid">IC LIST</div><h3>八个接口 + 一个约束</h3></div>
+        <div class="kv" id="icKv"></div>
+      </div>
+    </div>
+
+    <h3 class="sec-sub"><span>02.2</span>系统范围界定</h3>
+    <div class="grid">
+      <div class="cell reveal"><div class="idx">IN SCOPE</div><h3>系统之内</h3><p>计算与决策单元、传感器组、轮腿机构与伺服驱动、能源与热管理、通信终端、载荷机械/电气接口、安全监护通道、整机防护结构。</p></div>
+      <div class="cell a reveal"><div class="idx">OUT OF SCOPE</div><h3>系统之外</h3><p>指挥所与指挥信息系统、侦察/中继无人机、有人战车、保障与运输设备、弹药本身、卫星导航星座、操作员训练体系。</p></div>
+      <div class="cell c reveal"><div class="idx">BOUNDARY</div><h3>边界判据</h3><p>凡随机交付、由本系统供电与计算控制、可整体运输的硬件与驻留软件属系统内；否则按外部实体建立接口契约。</p></div>
+    </div>
+
+    <h3 class="sec-sub"><span>02.3</span>需求条目汇总 · 3 – 15 章</h3>
+    <p class="lv-desc" style="margin:0 0 16px">各章只填本平台的实际内容。需求条目在这里按章节汇总，编号与前面各节一致，可以互相查对。</p>
+<div class="acc" id="syrsAcc"></div>
+    <div class="tag-row">
+      <span class="tag">目的与范围</span><span class="tag">系统概述</span><span class="tag">外部接口</span><span class="tag">功能</span><span class="tag">性能</span>
+      <span class="tag">可用性</span><span class="tag">运行</span><span class="tag">模式与状态</span><span class="tag">物理特性</span><span class="tag">环境条件</span>
+      <span class="tag">信息安全</span><span class="tag">信息管理</span><span class="tag">政策法规</span><span class="tag">寿命周期保障</span><span class="tag">验证与追溯</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 架构 ============ -->
+<section class="level" id="s3">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">03</div>
+      <div>
+        <div class="lv-tag" style="color:var(--violet)">初始系统架构 / ARCHITECTURE</div>
+        <h2>功能架构 · 逻辑架构 · 物理架构</h2>
+        <div class="en">Architecture Definition Process · 三视图 + 架构决策</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">架构说的是做什么、由谁承担，不是怎么做。功能架构给功能分解和输入输出流；逻辑架构把功能分到逻辑元素上、定下控制关系；物理架构再把逻辑元素落到硬件、软件和结构件。三层要能互相追得回去。</p>
+
+    <div class="archtabs" id="archTabs">
+      <div class="atab on" data-view="v-fn"><div class="an">VIEW 01</div><div class="at">功能架构 Functional</div></div>
+      <div class="atab" data-view="v-lc"><div class="an">VIEW 02</div><div class="at">逻辑架构 Logical</div></div>
+      <div class="atab" data-view="v-ph"><div class="an">VIEW 03</div><div class="at">物理架构 Physical</div></div>
+    </div>
+
+    <div class="aview on" id="v-fn">
+      <div class="svgbox">
+        <svg viewBox="0 0 900 280" xmlns="http://www.w3.org/2000/svg">
+          <g class="nd" data-k="ctrl" style="cursor:default"><rect x="340" y="8" width="220" height="42"/><text x="450" y="34" text-anchor="middle" style="font-size:12px">F0 遂行地面无人作战任务</text></g>
+          <path class="el ctl" d="M450,50 L450,72"/>
+          <path class="el ctl" d="M80,72 L822,72"/>
+          <path class="el ctl" d="M80,72 L80,84"/>
+          <g class="nd" data-k="ctrl" style="cursor:default"><rect x="30" y="84" width="100" height="44"/><text x="80" y="110" text-anchor="middle" style="font-size:10.5px">F1 环境感知</text></g>
+          <path class="el ctl" d="M186,72 L186,84"/>
+          <g class="nd" data-k="ctrl" style="cursor:default"><rect x="136" y="84" width="100" height="44"/><text x="186" y="110" text-anchor="middle" style="font-size:10.5px">F2 定位建图</text></g>
+          <path class="el ctl" d="M292,72 L292,84"/>
+          <g class="nd" data-k="ctrl" style="cursor:default"><rect x="242" y="84" width="100" height="44"/><text x="292" y="110" text-anchor="middle" style="font-size:10.5px">F3 规划决策</text></g>
+          <path class="el ctl" d="M398,72 L398,84"/>
+          <g class="nd" data-k="ctrl" style="cursor:default"><rect x="348" y="84" width="100" height="44"/><text x="398" y="110" text-anchor="middle" style="font-size:10.5px">F4 轮腿控制</text></g>
+          <path class="el ctl" d="M504,72 L504,84"/>
+          <g class="nd" data-k="act" style="cursor:default"><rect x="454" y="84" width="100" height="44"/><text x="504" y="110" text-anchor="middle" style="font-size:10.5px">F5 载荷火力</text></g>
+          <path class="el ctl" d="M610,72 L610,84"/>
+          <g class="nd" data-k="act" style="cursor:default"><rect x="560" y="84" width="100" height="44"/><text x="610" y="110" text-anchor="middle" style="font-size:10.5px">F6 通信协同</text></g>
+          <path class="el ctl" d="M716,72 L716,84"/>
+          <g class="nd" data-k="act" style="cursor:default"><rect x="666" y="84" width="100" height="44"/><text x="716" y="110" text-anchor="middle" style="font-size:10.5px">F7 能源热管理</text></g>
+          <path class="el ctl" d="M822,72 L822,84"/>
+          <g class="nd" data-k="act" style="cursor:default"><rect x="772" y="84" width="100" height="44"/><text x="822" y="110" text-anchor="middle" style="font-size:10.5px">F8 健康安全</text></g>
+          <path class="el" d="M80,128 L80,176"/>
+          <g class="nd" data-k="proc" style="cursor:default"><rect x="30" y="176" width="100" height="52"/><text x="80" y="196" text-anchor="middle" style="font-size:8px">F1.1 多源融合</text><text x="80" y="212" text-anchor="middle" style="font-size:8px">F1.2 目标识别</text></g>
+          <path class="el" d="M186,128 L186,176"/>
+          <g class="nd" data-k="proc" style="cursor:default"><rect x="136" y="176" width="100" height="52"/><text x="186" y="196" text-anchor="middle" style="font-size:8px">F2.1 组合导航</text><text x="186" y="212" text-anchor="middle" style="font-size:8px">F2.2 三维建图</text></g>
+          <path class="el" d="M292,128 L292,176"/>
+          <g class="nd" data-k="proc" style="cursor:default"><rect x="242" y="176" width="100" height="52"/><text x="292" y="196" text-anchor="middle" style="font-size:8px">F3.1 任务分解</text><text x="292" y="212" text-anchor="middle" style="font-size:8px">F3.2 路径规划</text></g>
+          <path class="el" d="M398,128 L398,176"/>
+          <g class="nd" data-k="proc" style="cursor:default"><rect x="348" y="176" width="100" height="52"/><text x="398" y="196" text-anchor="middle" style="font-size:8px">F4.1 轮腿控制</text><text x="398" y="212" text-anchor="middle" style="font-size:8px">F4.2 模式切换</text></g>
+          <path class="el" d="M504,128 L504,176"/>
+          <g class="nd" data-k="sens" style="cursor:default"><rect x="454" y="176" width="100" height="52"/><text x="504" y="196" text-anchor="middle" style="font-size:8px">F5.1 快换识别</text><text x="504" y="212" text-anchor="middle" style="font-size:8px">F5.2 授权击发</text></g>
+          <path class="el" d="M610,128 L610,176"/>
+          <g class="nd" data-k="sens" style="cursor:default"><rect x="560" y="176" width="100" height="52"/><text x="610" y="196" text-anchor="middle" style="font-size:8px">F6.1 自组网</text><text x="610" y="212" text-anchor="middle" style="font-size:8px">F6.2 协同交互</text></g>
+          <path class="el" d="M716,128 L716,176"/>
+          <g class="nd" data-k="sens" style="cursor:default"><rect x="666" y="176" width="100" height="52"/><text x="716" y="196" text-anchor="middle" style="font-size:8px">F7.1 功率分配</text><text x="716" y="212" text-anchor="middle" style="font-size:8px">F7.2 热管理</text></g>
+          <path class="el" d="M822,128 L822,176"/>
+          <g class="nd" data-k="sens" style="cursor:default"><rect x="772" y="176" width="100" height="52"/><text x="822" y="196" text-anchor="middle" style="font-size:8px">F8.1 BIT 诊断</text><text x="822" y="212" text-anchor="middle" style="font-size:8px">F8.2 安全监护</text></g>
+          <text x="80" y="246" text-anchor="middle" class="tl2">感知</text>
+          <text x="186" y="246" text-anchor="middle" class="tl2">导航</text>
+          <text x="292" y="246" text-anchor="middle" class="tl2">决策</text>
+          <text x="398" y="246" text-anchor="middle" class="tl2">执行</text>
+          <text x="504" y="246" text-anchor="middle" class="tl2">载荷</text>
+          <text x="610" y="246" text-anchor="middle" class="tl2">通信</text>
+          <text x="716" y="246" text-anchor="middle" class="tl2">能源</text>
+          <text x="822" y="246" text-anchor="middle" class="tl2">安全</text>
+          <text x="20" y="268" class="tl2">— 功能分解（F0 → F1–F8 → 子功能）  ·  每个一级功能承载 2 条 FR 与 1 条 PR</text>
+        </svg>
+      </div>
+      <div class="grid" style="margin-top:12px">
+        <div class="cell"><div class="idx">DECOMPOSITION</div><h3>分解准则</h3><p>按「感知—认知—决策—执行」的功能流分解，每一层功能都可独立分配性能指标并独立验证；8 个一级功能与前面 8 个功能域一一对应。</p></div>
+        <div class="cell c"><div class="idx">INTERFACE</div><h3>功能间接口</h3><p>F1/F2 向 F3 提供「地图 + 位姿 + 目标列表」；F3 向 F4 输出「路径 + 速度剖面」；F8 对 F4/F5 拥有安全否决权。</p></div>
+        <div class="cell a"><div class="idx">TRACE</div><h3>需求分配</h3><p>FR-01~16 全部分配至 8 个功能域，无孤儿需求；每条功能域至少承载 2 条功能需求与 1 条性能需求。</p></div>
+      </div>
+    </div>
+
+    <div class="aview" id="v-lc">
+      <div class="svgbox">
+        <svg viewBox="0 0 900 460" xmlns="http://www.w3.org/2000/svg">
+          <text x="20" y="26" class="tl2">逻辑层 L1 · 感知与融合</text>
+          <g class="nd" data-k="sens" style="cursor:default"><rect x="20" y="36" width="150" height="44"/><text x="95" y="55" text-anchor="middle">视觉/红外感知</text><text x="95" y="70" text-anchor="middle" class="sub">F1.1</text></g>
+          <g class="nd" data-k="sens" style="cursor:default"><rect x="184" y="36" width="150" height="44"/><text x="259" y="55" text-anchor="middle">激光/毫米波</text><text x="259" y="70" text-anchor="middle" class="sub">F1.1</text></g>
+          <g class="nd" data-k="sens" style="cursor:default"><rect x="348" y="36" width="150" height="44"/><text x="423" y="55" text-anchor="middle">IMU / 轮速/关节</text><text x="423" y="70" text-anchor="middle" class="sub">F2.1</text></g>
+          <g class="nd" data-k="sens" style="cursor:default"><rect x="512" y="36" width="150" height="44"/><text x="587" y="55" text-anchor="middle">多源融合与建图</text><text x="587" y="70" text-anchor="middle" class="sub">F1.2 / F2.2</text></g>
+          <g class="nd" data-k="ext" style="cursor:default"><rect x="700" y="36" width="180" height="44"/><text x="790" y="55" text-anchor="middle">GNSS / 授时</text><text x="790" y="70" text-anchor="middle" class="sub">IC-07</text></g>
+
+          <text x="20" y="122" class="tl2">逻辑层 L2 · 决策与协同</text>
+          <g class="nd" data-k="ctrl" style="cursor:default"><rect x="20" y="132" width="180" height="52"/><text x="110" y="152" text-anchor="middle">任务管理与行为决策</text><text x="110" y="168" text-anchor="middle" class="sub">F3.1 / MO-状态机</text></g>
+          <g class="nd" data-k="ctrl" style="cursor:default"><rect x="216" y="132" width="180" height="52"/><text x="306" y="152" text-anchor="middle">路径规划与重规划</text><text x="306" y="168" text-anchor="middle" class="sub">F3.2</text></g>
+          <g class="nd" data-k="ctrl" style="cursor:default"><rect x="412" y="132" width="180" height="52"/><text x="502" y="152" text-anchor="middle">协同与任务分配</text><text x="502" y="168" text-anchor="middle" class="sub">F6.2</text></g>
+          <g class="nd" data-k="act" style="cursor:default"><rect x="608" y="132" width="272" height="52"/><text x="744" y="152" text-anchor="middle">安全监护（独立通道 · 否决权）</text><text x="744" y="168" text-anchor="middle" class="sub">F8.2 / 见 06 节</text></g>
+
+          <text x="20" y="228" class="tl2">逻辑层 L3 · 执行与控制</text>
+          <g class="nd" data-k="act" style="cursor:default"><rect x="20" y="238" width="170" height="52"/><text x="105" y="258" text-anchor="middle">轮/腿运动控制</text><text x="105" y="274" text-anchor="middle" class="sub">F4.1</text></g>
+          <g class="nd" data-k="act" style="cursor:default"><rect x="206" y="238" width="170" height="52"/><text x="291" y="258" text-anchor="middle">模式切换管理</text><text x="291" y="274" text-anchor="middle" class="sub">F4.2</text></g>
+          <g class="nd" data-k="act" style="cursor:default"><rect x="392" y="238" width="170" height="52"/><text x="477" y="258" text-anchor="middle">载荷控制与保险</text><text x="477" y="274" text-anchor="middle" class="sub">F5.2</text></g>
+          <g class="nd" data-k="act" style="cursor:default"><rect x="578" y="238" width="170" height="52"/><text x="663" y="258" text-anchor="middle">能源与热管理</text><text x="663" y="274" text-anchor="middle" class="sub">F7.1</text></g>
+          <g class="nd" data-k="act" style="cursor:default"><rect x="764" y="238" width="116" height="52"/><text x="822" y="258" text-anchor="middle">BIT 诊断</text><text x="822" y="274" text-anchor="middle" class="sub">F8.1</text></g>
+
+          <text x="20" y="330" class="tl2">支撑与外部</text>
+          <g class="nd" data-k="proc" style="cursor:default"><rect x="20" y="340" width="180" height="44"/><text x="110" y="359" text-anchor="middle">驱动/伺服/切换机构</text><text x="110" y="374" text-anchor="middle" class="sub">ACTUATORS</text></g>
+          <g class="nd" data-k="proc" style="cursor:default"><rect x="216" y="340" width="180" height="44"/><text x="306" y="359" text-anchor="middle">平台运动与位姿</text><text x="306" y="374" text-anchor="middle" class="sub">PROCESS</text></g>
+          <g class="nd" data-k="ext" style="cursor:default"><rect x="412" y="340" width="180" height="44"/><text x="502" y="359" text-anchor="middle">通信链路 / 中继</text><text x="502" y="374" text-anchor="middle" class="sub">IC-04 / F6.1</text></g>
+          <g class="nd" data-k="ext" style="cursor:default"><rect x="608" y="340" width="272" height="44"/><text x="744" y="359" text-anchor="middle">指挥所 · 操作员 · 编队友军</text><text x="744" y="374" text-anchor="middle" class="sub">IC-01 / IC-02 / IC-03</text></g>
+
+          <path class="el" d="M587,80 L587,106 L502,106 L502,132" marker-end="url(#ar)"/>
+          <path class="el env" d="M700,58 L662,58" marker-end="url(#ar)"/>
+          <path class="el" d="M423,80 L423,110 L306,110 L306,132" marker-end="url(#ar)"/>
+          <path class="el ctl" d="M200,158 L216,158" marker-end="url(#ar-g)"/>
+          <path class="el ctl" d="M396,158 L412,158" marker-end="url(#ar-g)"/>
+          <path class="el" d="M110,184 L110,238" marker-end="url(#ar)"/>
+          <path class="el" d="M306,184 L306,238" marker-end="url(#ar)"/>
+          <path class="el" d="M502,184 L502,238" marker-end="url(#ar)"/>
+          <path class="el" d="M105,290 L105,340" marker-end="url(#ar)"/>
+          <path class="el fb" d="M216,362 L200,362 L200,300 L105,300 L105,290" marker-end="url(#ar-v)"/>
+          <path class="el fb" d="M700,184 L700,212 L500,212 L500,238" marker-end="url(#ar-v)"/>
+          <text x="512" y="208" class="flb">安全否决</text>
+          <text x="118" y="316" class="flb">位姿反馈</text>
+        </svg>
+      </div>
+      <div class="grid" style="margin-top:12px">
+        <div class="cell c"><div class="idx">LAYER L1</div><h3>感知与融合层</h3><p>多源传感器 + 组合导航；输出统一时空基准下的地图、位姿与目标列表。所有原始数据同时进入安全通道做交叉校验。</p></div>
+        <div class="cell"><div class="idx">LAYER L2</div><h3>决策与协同层</h3><p>任务分解、路径规划、协同分配；与<b style="color:var(--neon)">安全监护逻辑</b>并列，后者拥有对指令的否决权（架构关键决策）。</p></div>
+        <div class="cell a"><div class="idx">LAYER L3</div><h3>执行与控制层</h3><p>运动控制、模式切换、载荷保险、能源分配；执行器具备本地限幅与硬件急停断链，不依赖上层软件。</p></div>
+      </div>
+    </div>
+
+    <div class="aview" id="v-ph">
+      <div class="svgbox">
+        <svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg">
+          <g class="nd" data-k="ctrl" style="cursor:default"><rect x="20" y="20" width="200" height="80"/><text x="120" y="44" text-anchor="middle">计算单元 A · 任务计算机</text><text x="120" y="62" text-anchor="middle" class="sub">异构 SoC + GPU · 感知/决策</text><text x="120" y="80" text-anchor="middle" class="sub">PH-01</text></g>
+          <g class="nd" data-k="ctrl" style="cursor:default"><rect x="240" y="20" width="200" height="80"/><text x="340" y="44" text-anchor="middle">计算单元 B · 运动控制器</text><text x="340" y="62" text-anchor="middle" class="sub">实时 MCU · 1 kHz 控制环</text><text x="340" y="80" text-anchor="middle" class="sub">PH-02</text></g>
+          <g class="nd" data-k="act" style="cursor:default"><rect x="460" y="20" width="200" height="80"/><text x="560" y="44" text-anchor="middle">安全监控器（独立）</text><text x="560" y="62" text-anchor="middle" class="sub">独立供电 / 独立总线 / 看门狗</text><text x="560" y="80" text-anchor="middle" class="sub">PH-03</text></g>
+          <g class="nd" data-k="ext" style="cursor:default"><rect x="680" y="20" width="200" height="80"/><text x="780" y="44" text-anchor="middle">操作终端 / 链路终端</text><text x="780" y="62" text-anchor="middle" class="sub">双频自组网 + 卫通备份</text><text x="780" y="80" text-anchor="middle" class="sub">PH-04</text></g>
+
+          <g class="nd" data-k="sens" style="cursor:default"><rect x="20" y="130" width="200" height="76"/><text x="120" y="154" text-anchor="middle">传感器组</text><text x="120" y="172" text-anchor="middle" class="sub">可见光/红外 · 激光雷达</text><text x="120" y="188" text-anchor="middle" class="sub">IMU×2 · 毫米波 · PH-05</text></g>
+          <g class="nd" data-k="act" style="cursor:default"><rect x="240" y="130" width="200" height="76"/><text x="340" y="154" text-anchor="middle">轮腿机构与驱动</text><text x="340" y="172" text-anchor="middle" class="sub">轮毂电机×4 · 关节伺服×8</text><text x="340" y="188" text-anchor="middle" class="sub">切换/锁定机构 · PH-06</text></g>
+          <g class="nd" data-k="act" style="cursor:default"><rect x="460" y="130" width="200" height="76"/><text x="560" y="154" text-anchor="middle">能源与热管理</text><text x="560" y="172" text-anchor="middle" class="sub">电池组 + BMS 三级保护</text><text x="560" y="188" text-anchor="middle" class="sub">隔舱/泄压 · 液冷 · PH-07</text></g>
+          <g class="nd" data-k="proc" style="cursor:default"><rect x="680" y="130" width="200" height="76"/><text x="780" y="154" text-anchor="middle">载荷接口与保险</text><text x="780" y="172" text-anchor="middle" class="sub">快换机械/电气接口</text><text x="780" y="188" text-anchor="middle" class="sub">机械保险 + 电子互锁 · PH-08</text></g>
+
+          <g class="nd" data-k="proc" style="cursor:default"><rect x="20" y="240" width="420" height="60"/><text x="230" y="264" text-anchor="middle">整车结构与防护（承载 / 抗冲击 / IP65 / 三防）</text><text x="230" y="284" text-anchor="middle" class="sub">PH-09 · 与轮腿机构一体化设计，决定离地间隙与越障几何</text></g>
+          <g class="nd" data-k="proc" style="cursor:default"><rect x="460" y="240" width="420" height="60"/><text x="670" y="264" text-anchor="middle">车内总线与线束（双冗余 CAN + 安全硬线）</text><text x="670" y="284" text-anchor="middle" class="sub">PH-10 · 安全通道独立走线，物理隔离</text></g>
+
+          <text x="20" y="340" class="tl2">架构决策要点</text>
+          <text x="20" y="362" style="fill:#9fb0ba;font-size:11px">① 三核异构：任务/运动/安全分离，避免单点软件故障扩散  ② 安全通道独立供电与总线  ③ 载荷机械保险与电子互锁双联锁</text>
+          <text x="20" y="384" style="fill:#9fb0ba;font-size:11px">④ 轮腿一体化承载结构，机构与车架共节点以降低重量  ⑤ 电池隔舱 + 泄压通道，热失控不波及计算与载荷</text>
+        </svg>
+      </div>
+      <div class="grid" style="margin-top:12px">
+        <div class="cell v"><div class="idx">AD-01</div><h3>三核异构而非单核</h3><p>任务计算与运动控制物理分离，安全监护再独立一颗 MCU。代价是重量与成本，收益是单点故障不会同时污染决策与执行。</p></div>
+        <div class="cell v"><div class="idx">AD-02</div><h3>安全通道独立供电</h3><p>安全监控器由独立 DC-DC 与独立电池支路供电，主电源失效后仍可维持 ≥10 min 的切断与告警能力。</p></div>
+        <div class="cell v"><div class="idx">AD-03</div><h3>轮腿机构与车架共节点</h3><p>相比「底盘 + 附加腿」的两段式，重量下降约 12%，但维修性变差——以快换轮组与模块化关节补偿。</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 04 控制框图 ============ -->
+<section class="level" id="s4" style="background:rgba(11,17,24,.5)">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">04</div>
+      <div>
+        <div class="lv-tag" style="color:var(--neon)">系统控制框图 / CONTROL STRUCTURE</div>
+        <h2>STPA 第 2 步：控制结构模型</h2>
+        <div class="en">Controller → Actuator → Controlled Process → Sensor → Feedback</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">控制结构只画功能交互，不画实现：控制器下控制动作，执行器作用在被控过程上，传感器把状态回传。图中琥珀色的 <code>CA-01 ~ CA-08</code> 是下一步做 UCA 的对象。</p>
+
+    <div class="svgbox">
+      <svg viewBox="0 0 990 620" id="ctrlSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <div class="duo" style="grid-template-columns:.62fr 1.38fr">
+      <div class="panel" style="padding:16px 18px">
+        <div class="ph"><div class="pid">LEGEND</div><h3>图例</h3></div>
+        <div class="kv">
+          <div class="row"><div class="kk">控制器</div><div class="vv"><span class="badge g">绿色边</span>下达控制动作</div></div>
+          <div class="row"><div class="kk">执行器</div><div class="vv"><span class="badge y">琥珀边</span>把指令转为物理作用</div></div>
+          <div class="row"><div class="kk">被控过程</div><div class="vv"><span class="badge c">青色边</span>平台运动 / 载荷指向</div></div>
+          <div class="row"><div class="kk">传感器</div><div class="vv"><span class="badge v">紫色边</span>提供反馈量</div></div>
+          <div class="row"><div class="kk">外部</div><div class="vv"><span class="badge">虚线边</span>系统边界之外</div></div>
+        </div>
+      </div>
+      <div class="panel" id="ctrlPanel"></div>
+    </div>
+
+    <h3 style="font-family:var(--serif);font-size:17px;margin:32px 0 10px;color:#e7efe9">控制动作清单（CA）</h3>
+    <div class="srlist" id="caList"></div>
+  </div>
+</section>
+
+<!-- ============ 05 STPA ============ -->
+<section class="level" id="s5">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">05</div>
+      <div>
+        <div class="lv-tag" style="color:var(--amber)">系统理论过程分析 / STPA</div>
+        <h2>损失 → 危险 → UCA → 损失场景</h2>
+        <div class="en">SAE J3187 · STPA 四步法</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">STPA 的前提是：事故多数不是零件坏了，而是控制没做好。四步走下来——定范围与损失、画控制结构、找不安全控制动作、追损失场景。</p>
+
+    <h3 style="font-family:var(--serif);font-size:16px;margin:8px 0 10px;color:#e7efe9">STEP 1 · 损失（Losses）——我们不希望发生什么</h3>
+    <div class="grid" id="lossGrid"></div>
+
+    <h3 style="font-family:var(--serif);font-size:16px;margin:28px 0 10px;color:#e7efe9">STEP 1 · 危险（Hazards）与安全约束（SC）</h3>
+    <div class="filters" id="hzBtns" style="margin-top:0"></div>
+    <div class="panel" id="hzPanel"></div>
+
+    <h3 style="font-family:var(--serif);font-size:16px;margin:30px 0 10px;color:#e7efe9">STEP 3 · 不安全控制动作（UCA）——按控制动作展开四类</h3>
+    <p class="lv-desc" style="margin:0 0 12px">每个控制动作固定查四种失效：没给、给了但危险、给早了给晚了或次序错、停早了停久了。8 个控制动作共 <b>32</b> 条。</p>
+    <div class="filters" id="caBtns" style="margin-top:0"></div>
+    <div class="ucawrap" id="ucaWrap"></div>
+
+    <h3 style="font-family:var(--serif);font-size:16px;margin:30px 0 10px;color:#e7efe9">STEP 4 · 损失场景（Causal Scenarios）——为什么会发生</h3>
+    <div class="acc" id="scAcc"></div>
+    <div class="note" style="border-left:2px solid var(--amber);background:rgba(255,180,84,.05);padding:10px 14px;margin-top:14px;font-size:12px;color:#b9a98d">
+      <b style="color:var(--amber)">注意</b>：损失场景不是「头脑风暴」，而要沿控制回路系统检查四类原因——① 控制器未收到必要反馈 ② 反馈不正确/延迟 ③ 控制算法或模型不当 ④ 执行器失效或响应不足。每条场景直接派生安全需求（SAF）。
+    </div>
+  </div>
+</section>
+
+<!-- ============ 06 安全 ============ -->
+<section class="level" id="s6" style="background:rgba(11,17,24,.5)">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">06</div>
+      <div>
+        <div class="lv-tag" style="color:var(--violet)">安全需求与安全架构 / SAFETY</div>
+        <h2>SAF-01 ~ SAF-12 与双通道安全架构</h2>
+        <div class="en">Safety Requirements · Safety Architecture</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">分析结果要落回需求和架构：每条损失场景派生一条可验证的安全需求，安全需求再驱动架构加一层独立通道和互锁。不是事后打补丁，是初始架构里就留好位置。</p>
+
+    <div class="filters" id="safFilters"></div>
+    <div class="srlist" id="safList"></div>
+
+    <h3 style="font-family:var(--serif);font-size:16px;margin:30px 0 10px;color:#e7efe9">安全架构：任务通道 / 安全通道分离</h3>
+    <div class="svgbox">
+      <svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg">
+        <!-- 任务通道 -->
+        <text x="20" y="24" class="tl2">任务通道（高性能 / 可失效）</text>
+        <g class="nd" data-k="ctrl" style="cursor:default"><rect x="20" y="34" width="170" height="52"/><text x="105" y="56" text-anchor="middle">任务计算机</text><text x="105" y="72" text-anchor="middle" class="sub">感知 · 决策 · 规划</text></g>
+        <g class="nd" data-k="ctrl" style="cursor:default"><rect x="210" y="34" width="170" height="52"/><text x="295" y="56" text-anchor="middle">运动控制计算机</text><text x="295" y="72" text-anchor="middle" class="sub">F4 · 1 kHz</text></g>
+        <g class="nd" data-k="act" style="cursor:default"><rect x="400" y="34" width="170" height="52"/><text x="485" y="56" text-anchor="middle">驱动与伺服</text><text x="485" y="72" text-anchor="middle" class="sub">轮毂/关节/切换</text></g>
+        <g class="nd" data-k="act" style="cursor:default"><rect x="590" y="34" width="170" height="52"/><text x="675" y="56" text-anchor="middle">载荷执行与保险</text><text x="675" y="72" text-anchor="middle" class="sub">指向/击发/机械锁</text></g>
+        <!-- 物理隔离带 -->
+        <rect x="10" y="112" width="880" height="26" fill="rgba(255,180,84,.05)" stroke="rgba(255,180,84,.25)" stroke-dasharray="4 4"/>
+        <text x="450" y="130" text-anchor="middle" style="fill:#ffb454;font-size:10px;font-family:var(--mono);letter-spacing:2px">PHYSICAL ISOLATION · 独立供电 / 独立总线 / 独立时钟</text>
+        <!-- 安全通道 -->
+        <text x="20" y="172" class="tl2">安全通道（简单 / 高可信 / 单方面可切断）</text>
+        <g class="nd" data-k="sens" style="cursor:default"><rect x="20" y="182" width="180" height="60"/><text x="110" y="204" text-anchor="middle">独立传感输入</text><text x="110" y="222" text-anchor="middle" class="sub">IMU-B / 轮速 / 倾角</text><text x="110" y="236" text-anchor="middle" class="sub">围栏/授权状态</text></g>
+        <g class="nd" data-k="act" style="cursor:default"><rect x="220" y="182" width="210" height="60"/><text x="325" y="204" text-anchor="middle">安全监控器 Safety MCU</text><text x="325" y="222" text-anchor="middle" class="sub">周期 ≤50 ms 校验</text><text x="325" y="236" text-anchor="middle" class="sub">SC-1~SC-8 规则表</text></g>
+        <g class="nd" data-k="act" style="cursor:default"><rect x="450" y="182" width="180" height="60"/><text x="540" y="204" text-anchor="middle">硬件断链开关</text><text x="540" y="222" text-anchor="middle" class="sub">驱动使能 / 武器保险</text><text x="540" y="236" text-anchor="middle" class="sub">≤200 ms 切断</text></g>
+        <g class="nd" data-k="proc" style="cursor:default"><rect x="650" y="182" width="230" height="60"/><text x="765" y="204" text-anchor="middle">安全状态（Safe State）</text><text x="765" y="222" text-anchor="middle" class="sub">降速停车 / 保险上锁 / 就地隐蔽</text><text x="765" y="236" text-anchor="middle" class="sub">仅安全通道可单方面进入</text></g>
+        <!-- 连线 -->
+        <path class="el ctl" d="M190,60 L210,60" marker-end="url(#ar-g)"/>
+        <path class="el ctl" d="M380,60 L400,60" marker-end="url(#ar-g)"/>
+        <path class="el ctl" d="M570,60 L590,60" marker-end="url(#ar-g)"/>
+        <path class="el ctl" d="M200,212 L220,212" marker-end="url(#ar-g)"/>
+        <path class="el ctl" d="M430,212 L450,212" marker-end="url(#ar-g)"/>
+        <path class="el ctl" d="M630,212 L650,212" marker-end="url(#ar-g)"/>
+        <path class="el" d="M540,182 L540,88" marker-end="url(#ar)" style="stroke:rgba(255,90,90,.75)"/>
+        <text x="548" y="172" style="fill:#ff5a5a;font-size:8.5px;font-family:var(--mono)">CUT-OFF 硬切断（≤200 ms）</text>
+        <text x="20" y="286" class="tl2">互锁链（Independence &amp; Interlock）</text>
+        <g class="nd" data-k="ext" style="cursor:default"><rect x="20" y="296" width="270" height="58"/><text x="155" y="318" text-anchor="middle">指挥员授权 + 操作员确认</text><text x="155" y="336" text-anchor="middle" class="sub">双人双因子 · 一次性令牌</text></g>
+        <g class="nd" data-k="ext" style="cursor:default"><rect x="310" y="296" width="250" height="58"/><text x="435" y="318" text-anchor="middle">机械保险位置反馈</text><text x="435" y="336" text-anchor="middle" class="sub">微动开关 · 硬线回读</text></g>
+        <g class="nd" data-k="act" style="cursor:default"><rect x="580" y="296" width="300" height="58"/><text x="730" y="318" text-anchor="middle">AND 门 → 允许击发</text><text x="730" y="336" text-anchor="middle" class="sub">任一缺失：拒绝 + 记录 + 上报</text></g>
+        <path class="el a" d="M290,325 L310,325" marker-end="url(#ar-a)"/>
+        <path class="el a" d="M560,325 L580,325" marker-end="url(#ar-a)"/>
+        <text x="20" y="392" class="tl2">黑匣子：控制指令 / 授权人 / 传感器原始数据 · 留存 ≥30 天 · 掉电不丢 · 抗篡改</text>
+      </svg>
+    </div>
+
+    <h3 style="font-family:var(--serif);font-size:16px;margin:30px 0 10px;color:#e7efe9">故障注入：验证安全架构是否真的起作用</h3>
+    <p class="lv-desc" style="margin:0 0 8px">四条典型故障，看安全通道怎么接。</p>
+    <div class="faults" id="faultBtns"></div>
+    <div class="panel" id="faultPanel"></div>
+  </div>
+</section>
+
+<!-- ============ 07 追溯 ============ -->
+<section class="level" id="s7">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">∑</div>
+      <div>
+        <div class="lv-tag" style="color:var(--neon)">追溯与自检 / TRACE &amp; REVIEW</div>
+        <h2>BR → StRS → SyRS → SAF 全链追溯</h2>
+        <div class="en">Traceability · 需求质量自检 · 遗留问题</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">前面两轮提出的业务需求和相关方需求，在这里都要能追到对应的系统需求或安全需求。追不到的就是缺口，标<b style="color:var(--amber)">待补</b>。</p>
+
+    <div class="duo" style="grid-template-columns:.55fr 1.45fr">
+      <div>
+        <div class="filters" id="trBtns" style="margin-top:0;flex-direction:column;align-items:stretch"></div>
+      </div>
+      <div class="panel" id="trPanel"></div>
+    </div>
+
+    <h3 style="font-family:var(--serif);font-size:16px;margin:32px 0 10px;color:#e7efe9">需求追溯矩阵</h3>
+    <div class="svgbox" style="padding:0;border:none;background:none">
+      <table class="matrix" id="matrixTbl"></table>
+    </div>
+
+    <div class="duo" style="grid-template-columns:1fr 1fr;margin-top:28px">
+      <div class="panel">
+        <div class="ph"><div class="pid">REVIEW</div><h3>自检结论</h3></div>
+        <div class="kv" id="reviewKv"></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="pid">OPEN</div><h3>遗留问题与下一步</h3></div>
+        <div class="kv" id="openKv"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="rule"></div>
+    <div class="foot-links">
+      <a href="index.html">[ ← 作业目录 ]</a>
+      <a href="assignment2.html">[ ← 作业2 ]</a>
+      <a href="assignment1.html">[ 作业1 ]</a>
+      <a href="https://github.com/AweiiiH/complex-systems-engineering-2026" target="_blank" rel="noopener">[ GitHub 仓库 ]</a>
+    </div>
+    <div class="kbdhint"><b>J</b>/<b>↓</b> 下一节 · <b>K</b>/<b>↑</b> 上一节 · <b>ESC</b> 收起展开项</div>
+  </div>
+</footer>
+
+<button class="top-btn" id="topBtn">↑</button>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const el = (tag, cls, html) => { const d=document.createElement(tag); if(cls) d.className=cls; if(html!=null) d.innerHTML=html; return d; };
+const kvRow = (k,v) => `<div class="row"><div class="kk">${k}</div><div class="vv">${v}</div></div>`;
+
+/* ============ 数据：外部接口 ============ */
+const EXT = {
+  sys:{n:'轮腿式无人作战平台（系统本身）', t:'被分析系统', kv:[
+    ['系统层级','整机 · 体系末端的智能作战节点'],
+    ['内部构成','计算/感知/驱动/能源/链路/载荷接口/安全监护/结构'],
+    ['阶段职责','承接相关方需求，输出系统需求与初始架构']]},
+  op:{n:'操作员控制终端', t:'IC-01', kv:[
+    ['方向','双向'],['内容','操纵指令、任务参数、视频/点云回传、平台状态与告警'],
+    ['形态','加固平板 + 手柄，戴手套可操作；有线/无线双模'],
+    ['关键指标','指令响应 ≤3 s；视频时延 ≤500 ms；单终端可切管 ≥3 台'],
+    ['失效影响','失操控 → 触发 SAF-05 失联安全状态']]},
+  c2:{n:'指挥所 / 指挥信息系统', t:'IC-02', kv:[
+    ['方向','双向'],['内容','任务指令、目标分配、交战授权、态势上报'],
+    ['协议','统一消息格式（沿用 SR-15 的约定），支持标准数据链接入'],
+    ['关键指标','任务接收成功率 ≥98%；授权令牌一次性、可撤销'],
+    ['失效影响','无法获得交战授权 → 载荷保持保险上锁（SAF-03）']]},
+  pl:{n:'任务载荷（侦察 / 打击）', t:'IC-05', kv:[
+    ['方向','机械 + 电气 + 数据'],['内容','快换机械接口、供电、控制总线、图像/状态回传'],
+    ['关键指标','换装 ≤10 min；参数自识别与自配置'],
+    ['安全约束','机械保险位置必须硬线回读（SAF-03 互锁输入）']]},
+  gn:{n:'卫星导航 / 授时', t:'IC-07', kv:[
+    ['方向','单向（接收）'],['内容','位置、速度、UTC 授时、PPS'],
+    ['关键指标','可用时定位 ≤0.3 m（RTK）；拒止时转组合导航 ≤1%/km'],
+    ['威胁','压制与欺骗 → 需具备欺骗检测（QR-04）']]},
+  env:{n:'战场环境（地形 / 干扰 / 敌方）', t:'约束源', kv:[
+    ['关系','非接口，但构成运行约束与威胁模型'],
+    ['地形','台阶 ≥0.4 m、壕沟 ≥0.6 m、楼梯 ≤30°、松软/碎石/涉水 0.3 m'],
+    ['对抗','通信干扰、GNSS 欺骗、光学烟尘、火力毁伤'],
+    ['处理方式','转为 PR-05/PR-09 指标与 05 节的威胁场景']]},
+  uav:{n:'侦察 / 中继无人机', t:'IC-04', kv:[
+    ['方向','双向'],['内容','空中态势、目标指示、链路中继、毁伤评估'],
+    ['关键指标','中继可用时链路延伸 ≥10 km；切换 ≤2 s'],
+    ['失效影响','链路劣化 → CA-08 切换失败路径，见 UCA-08']]},
+  team:{n:'编队友军（战车 / 无人平台）', t:'IC-03', kv:[
+    ['方向','双向'],['内容','位置与状态共享、任务协同、火力冲突消解'],
+    ['关键指标','≥16 节点；端到端 ≤200 ms；时间同步 ≤10 ms'],
+    ['安全约束','协同消息须签名，防伪造指令（SAF-10）']]},
+  log:{n:'保障设备（充电 / 检测）', t:'IC-06', kv:[
+    ['方向','双向（非作战状态）'],['内容','充电、BIT 深度自检、软件升级、故障读出'],
+    ['关键指标','换电 ≤5 min；2 人可抬运'],
+    ['安全约束','储运状态禁止上电驱动（模式互锁 M5）']]}
+};
+const EP = $('#extPanel');
+function renderExt(id){
+  const e = EXT[id];
+  EP.innerHTML = `<div class="ph"><div class="pid">${e.t}</div><h3>${e.n}</h3></div>
+    <div class="kv">${e.kv.map(r=>kvRow(r[0],r[1])).join('')}</div>`;
+  $$('#ctxSvg .nd').forEach(x=>x.classList.toggle('on', x.dataset.nid===id));
+}
+$$('#ctxSvg .nd[data-nid]').forEach(n=>n.addEventListener('click',()=>renderExt(n.dataset.nid)));
+renderExt('sys');
+$('#icKv').innerHTML = ['op','c2','team','uav','pl','log','gn','env']
+  .map(k=>kvRow(EXT[k].t, EXT[k].n.replace(/（.*/,''))).join('');
+
+/* ============ 数据：功能域 ============ */
+const FN = [
+  {id:'F1', n:'环境感知与态势融合', io:['入：多源传感器原始数据（可见光/红外/激光/毫米波）','出：360° 障碍图、目标列表（类别/坐标/置信度）'], pre:'传感器上电自检通过、时空标定有效', ex:'烟雾/强光致盲 → 降级到激光+毫米波；单传感器失效 → 权重重构并告警', fr:'FR-01 / FR-02', fail:'漏检导致撞障或误判目标'},
+  {id:'F2', n:'定位导航与建图', io:['入：IMU、轮速、GNSS、视觉/激光特征','出：连续位姿、局部三维地图、地形可通行性'], pre:'初始对准完成；地图基准一致', ex:'GNSS 拒止 → 惯性+视觉组合；长走廊退化 → 引入轮速与地标', fr:'FR-03 / FR-04', fail:'位姿漂移导致路径偏离与围栏误判'},
+  {id:'F3', n:'任务规划与行为决策', io:['入：任务指令、地图、目标列表、平台状态','出：路径、速度剖面、行为序列（侦察/接近/撤离）'], pre:'任务指令已校验、授权范围已加载', ex:'目标消失/新增障碍 → 在线重规划；任务冲突 → 上报请求裁决', fr:'FR-05 / FR-06', fail:'规划出不可行路径或进入禁区'},
+  {id:'F4', n:'轮腿运动控制', io:['入：路径与速度剖面、姿态反馈','出：轮毂转矩、关节角度/力矩、切换动作'], pre:'模式状态明确；执行器自检通过', ex:'打滑 → 牵引力控制；关节过载 → 限矩并请求切换', fr:'FR-07 / FR-08', fail:'失稳、倾覆、切换卡滞'},
+  {id:'F5', n:'载荷操作与火力控制', io:['入：目标指示、授权令牌、保险位置反馈','出：指向指令、击发信号、毁伤评估数据'], pre:'双人授权完成、机械保险解除已回读', ex:'授权超时 → 拒绝击发；目标移动 → 重新确认', fr:'FR-09 / FR-10', fail:'误击非目标或在未授权下击发'},
+  {id:'F6', n:'通信组网与协同交互', io:['入：自组网邻居表、链路质量、协同消息','出：任务上报、态势共享、中继路由'], pre:'入网认证通过、时钟同步 ≤10 ms', ex:'链路劣化 → 切中继；被干扰 → 跳频/降速', fr:'FR-11 / FR-12', fail:'失联、指令被伪造或重复'},
+  {id:'F7', n:'能源动力与热管理', io:['入：电池电压/温度/电流、负载需求','出：功率分配、降载指令、热管理动作'], pre:'BMS 通信正常、冷却回路可用', ex:'过温 → 分级降载；单体异常 → 隔离并告警', fr:'FR-13 / FR-14', fail:'热失控、续航不足导致任务中断'},
+  {id:'F8', n:'健康监测与安全监护', io:['入：全机 BIT 数据、姿态、围栏、授权状态','出：故障诊断结论、降级指令、安全否决、日志'], pre:'安全通道自检通过（独立供电）', ex:'关键故障 → 进入安全状态；日志写满 → 循环覆盖并上报', fr:'FR-15 / FR-16', fail:'安全功能失效而不被察觉（最危险）'}
+];
+const FR = [
+  ['FR-01','系统应融合可见光、红外、激光与毫米波数据，输出 360° 障碍图与目标列表，含类别、坐标与置信度。','F1','必须'],
+  ['FR-02','系统应对人员、车辆、工事、障碍四类目标完成检测与分类，并支持置信度阈值配置。','F1','必须'],
+  ['FR-03','系统应在 GNSS 可用与拒止两种条件下连续输出平台位姿，并在模式切换时保持坐标基准一致。','F2','必须'],
+  ['FR-04','系统应构建并增量更新局部三维地图，支持室外到室内无缝衔接。','F2','必须'],
+  ['FR-05','系统应接收任务指令并分解为可执行的航点序列与行为序列，指令变更时整体重规划。','F3','必须'],
+  ['FR-06','系统应进行路径规划与动态重规划，具备绕行、退路选择与不可通行时请求人工决策的能力。','F3','必须'],
+  ['FR-07','系统应支持轮行、腿行与轮腿协同三种运动方式，并按地形与指令调节速度与步态。','F4','必须'],
+  ['FR-08','系统应执行轮/腿模式切换，切换前判定静止与姿态条件，切换失败须保持原模式并告警。','F4','必须'],
+  ['FR-09','系统应识别载荷类型并自动加载参数，载荷更换后无需人工配置即可工作。','F5','应该'],
+  ['FR-10','系统应在获得有效授权且机械保险解除后执行指向、跟踪与击发；任一条件缺失须拒绝执行。','F5','必须'],
+  ['FR-11','系统应接入自组网、监测链路质量，并在劣化时切换中继或降级传输。','F6','必须'],
+  ['FR-12','系统应接收体系任务、上报态势，并遵循统一消息格式与协同规则（含冲突消解）。','F6','必须'],
+  ['FR-13','系统应估算电池 SOC/SOH 并按任务阶段分配功率，向操作员提供剩余续航估计。','F7','必须'],
+  ['FR-14','系统应在低电量或过温时执行分级降载，并按阈值触发返航或就地待机。','F7','必须'],
+  ['FR-15','系统应完成上电 BIT、周期 BIT 与故障隔离，输出故障代码并自动进入相应降级模式。','F8','必须'],
+  ['FR-16','系统应独立实施安全监护（急停、围栏、姿态包线、授权互锁）并留存不可篡改的操作日志。','F8','必须']
+];
+const RAIL = $('#fnRail'), FNP = $('#fnPanel');
+FN.forEach((f,i)=>{
+  const d = el('div','rnode'+(i===0?' on':''), `<div class="sn">${f.id}</div><div class="sn2">${f.n.replace(/与.*/,'')}</div>`);
+  d.addEventListener('click',()=>{ $$('#fnRail .rnode').forEach(x=>x.classList.remove('on')); d.classList.add('on'); renderFn(i); });
+  RAIL.appendChild(d);
+});
+function renderFn(i){
+  const f = FN[i];
+  FNP.innerHTML = `<div class="ph"><div class="pid">${f.id}</div><h3>${f.n}</h3><div class="tag">${f.fr}</div></div>
+    <div class="kv">${kvRow('输入', f.io[0].replace('入：',''))}${kvRow('输出', f.io[1].replace('出：',''))}
+    ${kvRow('前置条件', f.pre)}${kvRow('异常处理', f.ex)}${kvRow('对应需求', `<span class="badge c">${f.fr.split(' / ')[0]}</span>${f.fr.split(' / ')[1]?`<span class="badge c">${f.fr.split(' / ')[1]}</span>`:''}`)}
+    ${kvRow('功能失效后果', `<b style="color:var(--alert)">${f.fail}</b>`)}</div>`;
+}
+renderFn(0);
+$('#frList').innerHTML = FR.map(r=>`<div class="sr"><div class="sid">${r[0]}</div><div class="stx">${r[1]}</div>
+  <div class="smt"><span class="badge c">${r[2]}</span><span class="badge ${r[3]==='必须'?'g':'y'}">${r[3]}</span></div></div>`).join('');
+
+/* ============ 数据：性能需求 ============ */
+const PR = [
+  ['PR-01','昼间/夜间/雨雪雾条件下，对 ≥2 km 人员、≥4 km 车辆目标的检测识别准确率 ≥90%，虚警率 ≤10%','感知','试验'],
+  ['PR-02','多源融合输出频率 ≥10 Hz，从传感器采集到态势输出端到端时延 ≤150 ms','感知','试验'],
+  ['PR-03','GNSS 可用时定位误差 ≤0.3 m（RTK）；拒止条件下 1 km 漂移 ≤1%','导航','试验'],
+  ['PR-04','轮行最大速度 ≥20 km/h（硬质路面）、≥8 km/h（越野）；腿行 ≤3 km/h','机动','试验'],
+  ['PR-05','攀越 ≥0.4 m 垂直台阶、跨越 ≥0.6 m 壕沟、≤30° 楼梯稳定通行','机动','试验'],
+  ['PR-06','轮/腿切换时间 ≤30 s，切换过程不失稳、不产生非预期位移','机动','试验'],
+  ['PR-07','对静止点目标打击或引导精度 CEP ≤1 m（依载荷类型）','载荷','试验'],
+  ['PR-08','目标确认到授权击发闭环 ≤60 s；平台侧指令响应 ≤3 s','载荷','演示'],
+  ['PR-09','自组网视距通信 ≥5 km，≥16 节点，端到端时延 ≤200 ms','通信','试验'],
+  ['PR-10','续航 ≥6 h（轮行巡逻）或 ≥4 h（含 30 min 腿行），换电 ≤5 min','能源','试验'],
+  ['PR-11','平均故障间隔时间 MTBF ≥200 h；关键故障可检测覆盖率 ≥95%','可靠性','分析'],
+  ['PR-12','2 人展开时间 ≤5 min，撤收 ≤8 min（含入网与自检）','保障','演示'],
+  ['PR-13','单操作员可同时监督 ≥3 台平台，支持任务分配与一键接管','人因','演示'],
+  ['PR-14','轮行噪声 ≤75 dB(A) @7 m；红外特征满足夜间隐蔽要求','生存','试验']
+];
+const PRF = $('#prFilters'), PRL = $('#prList');
+const cats = ['全部','感知','导航','机动','载荷','通信','能源','可靠性','保障','人因','生存'];
+let prCat = '全部';
+cats.forEach((c,i)=>{
+  const n = c==='全部'?PR.length:PR.filter(r=>r[2]===c).length;
+  const b = el('button','fbtn'+(i===0?' on':''), `${c}<span class="c">${n}</span>`);
+  b.addEventListener('click',()=>{ prCat=c; $$('#prFilters .fbtn').forEach(x=>x.classList.remove('on')); b.classList.add('on'); renderPR(); });
+  PRF.appendChild(b);
+});
+function renderPR(){
+  const rows = PR.filter(r=>prCat==='全部'||r[2]===prCat);
+  PRL.innerHTML = rows.map(r=>`<div class="sr"><div class="sid">${r[0]}</div><div class="stx">${r[1]}</div>
+    <div class="smt"><span class="badge c">${r[2]}</span><span class="src">${r[3]}</span></div></div>`).join('') || '<div class="empty">无匹配需求</div>';
+}
+renderPR();
+
+const MOE = [['越障能力（台阶 m）',0.4,0.5,'0.4 m'],['轮行速度（km/h）',20,30,'20'],['续航（h）',6,10,'6'],
+  ['链路距离（km）',5,10,'5'],['杀伤链（s）',60,120,'≤60'],['MTBF（h）',200,500,'200']];
+$('#prBars').innerHTML = MOE.map(m=>`<div style="margin-bottom:9px">
+  <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-bottom:3px">
+    <span style="font-family:var(--mono);font-size:10.5px">${m[0]}</span><span style="color:var(--neon);font-family:var(--mono);font-size:10.5px">${m[3]}</span></div>
+  <div style="height:7px;background:rgba(90,140,160,.14);position:relative"><i style="position:absolute;left:0;top:0;bottom:0;width:${Math.round(m[1]/m[2]*100)}%;background:linear-gradient(90deg,var(--neon),rgba(62,242,155,.35));display:block"></i></div></div>`).join('');
+
+/* ============ 数据：QR 约束 ============ */
+const QR = [
+  ['QR-01','环境条件','工作温度 −30 ℃ ~ +55 ℃；贮存 −40 ℃ ~ +65 ℃；淋雨、扬尘、霉菌、盐雾按 GJB 150A 系列执行','PR-05 之外的适应性基线'],
+  ['QR-02','物理特性','整机质量 ≤350 kg（含电池）；离地间隙 ≥0.18 m；2 人可抬运；车载固定点 4 处','影响投送与展开'],
+  ['QR-03','电磁兼容','按 GJB 151B 执行，安装状态下的辐射发射与敏感度均需测试；与编队电台共存不互扰','继承型需求'],
+  ['QR-04','信息安全','链路加密与身份认证；指令签名与防重放；GNSS 欺骗检测；软件版本签名；日志抗篡改','对抗性威胁'],
+  ['QR-05','可用性 / 人因','戴防寒手套可单手操作；强光与夜暗下可读；告警分级呈现；误操作防护（关键动作二次确认）','直接来自 SR-13/24'],
+  ['QR-06','保障性','模块化快换（轮组/关节/电池/计算单元）；BIT 覆盖率 ≥95%；备件通用化；随机工具 ≤2 件','来自 SR-21/22'],
+  ['QR-07','政策与法规','遵守自主武器使用规则，关键决策人在回路；交战授权可撤销、可追溯；符合军用无人系统相关规定','来自 SR-17/25'],
+  ['QR-08','运输与贮存','符合公路/铁路/航空运输危险品与电池相关规定；贮存态电量 30%~50%；运输态机构锁定','来自 SR-22']
+];
+$('#qrAcc').innerHTML = QR.map((q,i)=>`<div class="acc-i${i===0?' open':''}">
+  <div class="acc-h"><div class="no">${q[0]}</div><h4>${q[1]}</h4><div class="sum">${q[3]}</div><div class="arw">▸</div></div>
+  <div class="acc-b"><p>${q[2]}</p></div></div>`).join('');
+
+/* ============ 数据：SyRS 章节 ============ */
+const SYRS = [
+  ['1.1','目的','规定轮腿式无人作战平台的系统级需求，作为架构设计、分系统研制、集成验证与定型试验的依据；面向研制方与试验鉴定方。'],
+  ['1.2','系统范围','平台整机（计算、感知、驱动、能源、链路、载荷接口、安全监护、结构）。不含指挥所、无人机、保障设备与弹药。'],
+  ['1.3','系统概述','地面无人作战装备，轮-腿复合构型；作为体系末端智能节点，承担前沿侦察、建筑与坑道清除、目标指示与有限打击。用户为无人作战分队（3–6 人）。限制：城区电磁环境复杂、GNSS 易被拒止、附带损伤约束严格。'],
+  ['1.4','定义与缩略语','SyRS / StRS / UCA / STPA / MOE / BIT / GNSS / ROE / CEP；轮腿复合、安全状态、双人授权等术语见术语表。'],
+  ['2','引用文件','ISO/IEC/IEEE 29148:2018；ISO/IEC/IEEE 15288:2023；SAE J3187；GJB 151B；GJB 150A；本组的 BRS 与 StRS；本项目 ConOps / OpsCon。'],
+  ['3.1','外部接口需求（IR-01~08）','对应 IC-01~IC-08：操作终端、指挥信息系统、编队友军、中继无人机、任务载荷、保障设备、GNSS、战场环境约束。每条含方向、内容、协议、指标与失效影响（见 1.1 上下文图）。'],
+  ['3.2','功能需求（FR-01~16）','8 个功能域：感知融合、定位建图、规划决策、轮腿控制、载荷火力、通信协同、能源热管理、健康与安全监护（见 01 节 3.2）。'],
+  ['3.3','性能需求（PR-01~14）','含检测距离与准确率、融合时延、定位精度、机动速度、越障几何、切换时间、打击精度、杀伤链时间、链路指标、续航、MTBF、展开时间、监督台数、噪声（见 01 节 3.3）。'],
+  ['3.4','可用性需求','戴防寒手套单手可操作；关键动作二次确认；告警分三级（提示/警告/危急）并以声光区分；连续操作 2 h 不产生显著疲劳。'],
+  ['3.5','运行需求','S0–S7 八阶段（储运、投送展开、轮行机动、越障转换、侦察感知、目标交战、撤收回收、补给维修）各阶段的功能与约束，与 OpsCon 一致。'],
+  ['3.6','模式与状态','M1 遥控、M2 监督自主、M3 协同编组、M4 失效降级、M5 储运维护；另设 S-SAFE 安全状态（由安全通道单方面进入）。状态迁移条件与禁止迁移在架构状态机中定义。'],
+  ['3.7','物理特性','整机 ≤350 kg；离地间隙 ≥0.18 m；折叠/运输尺寸满足车载；重心高度与轮距/轴距匹配侧倾稳定角 ≥20°。'],
+  ['3.8','环境条件','−30~+55 ℃工作；IP65；抗振按车载越野谱；涉水 0.3 m；抗风 6 级（腿行时降额）。'],
+  ['3.9','系统信息安全','链路加密、双向认证、指令签名与防重放、GNSS 欺骗检测、软件签名升级、日志抗篡改、一键数据销毁 ≤60 s。'],
+  ['3.10','信息管理','地图与任务数据分级存储；原始传感器数据留存 ≥30 天（黑匣子）；数据导出需授权并留痕；存储介质可物理销毁。'],
+  ['3.11','政策与法规','自主武器使用规则（人在回路、授权可撤销）、交战规则 ROE、战场数据保密规定、无人系统空/地域使用审批。'],
+  ['3.12','寿命周期保障','设计寿命 10 年 / 5000 工作小时；模块化快换；BIT 覆盖率 ≥95%；软件支持在线升级与回滚；备件与训练保障纳入研制。'],
+  ['3.13','包装运输','运输态机构锁定、电池按危险品运输规定（SOC 30%~50%）；包装抗振抗湿；随箱文件含履历本与检验记录。'],
+  ['3.14','验证与追溯','每条需求标注验证方法（试验 T / 分析 A / 演示 D / 检查 I）；建立 BR→SR→FR/PR/SAF 双向追溯（见末节）。']
+];
+$('#syrsAcc').innerHTML = SYRS.map((s,i)=>`<div class="acc-i${(i===0||i===6)?' open':''}">
+  <div class="acc-h"><div class="no">${s[0]}</div><h4>${s[1]}</h4><div class="sum">${s[2].slice(0,42)}…</div><div class="arw">▸</div></div>
+  <div class="acc-b"><p>${s[2]}</p></div></div>`).join('');
+
+/* ============ 架构 tabs ============ */
+$$('#archTabs .atab').forEach(t=>t.addEventListener('click',()=>{
+  $$('#archTabs .atab').forEach(x=>x.classList.remove('on')); t.classList.add('on');
+  $$('.aview').forEach(v=>v.classList.remove('on'));
+  document.getElementById(t.dataset.view).classList.add('on');
+}));
+
+/* ============ 控制结构 ============ */
+const CTRL = [
+  {id:'n1', x:120,y:24,w:240,h:54, t:'指挥所 / 操作员终端', s:'上级控制器 · 人', k:'ext',
+   role:'上级控制器（人）', ca:'CA-01 下达任务 / CA-04 授予交战权限 / CA-06 接管', fb:'平台状态、视频、告警',
+   fail:'授权延迟、任务指令歧义、监督负荷过高导致漏看告警'},
+  {id:'n2', x:120,y:134,w:240,h:54, t:'任务管理计算机', s:'控制器 · 感知/决策/规划', k:'ctrl',
+   role:'主控制器（软件）', ca:'CA-01 任务分解 / CA-03 速度剖面 / CA-07 降级决策', fb:'地图、位姿、目标列表、健康状态',
+   fail:'感知漏检导致规划错误；状态机卡滞；指令未送达未察觉'},
+  {id:'n3', x:40,y:250,w:200,h:54, t:'运动控制计算机', s:'控制器 · 1 kHz', k:'ctrl',
+   role:'下层控制器', ca:'CA-02 模式切换 / CA-03 轮速与步态 / CA-06 接管执行', fb:'关节角、轮速、IMU',
+   fail:'控制参数不适配地形；切换条件判定错误；执行器饱和'},
+  {id:'n4', x:270,y:250,w:200,h:54, t:'载荷控制计算机', s:'控制器 · 载荷/保险', k:'ctrl',
+   role:'下层控制器', ca:'CA-04 保险解除与击发 / CA-05 指向跟踪', fb:'保险位置、指向误差、授权状态',
+   fail:'授权校验被绕过；跟踪滞后；保险状态回读错误'},
+  {id:'n5', x:20,y:366,w:190,h:54, t:'轮毂电机 / 关节伺服', s:'执行器 ACTUATOR', k:'act',
+   role:'执行器', ca:'输出转矩与关节角', fb:'电流、温度、编码器',
+   fail:'堵转/过温降额；编码器失效导致位置环发散；单轮失效'},
+  {id:'n6', x:230,y:366,w:180,h:54, t:'轮腿模式切换机构', s:'执行器 · 锁定', k:'act',
+   role:'执行器（含机械锁定）', ca:'执行切换与锁定', fb:'锁定到位信号',
+   fail:'切换卡滞；未锁定仍被允许行驶；到位信号虚假'},
+  {id:'n7', x:430,y:366,w:190,h:54, t:'载荷伺服 / 机械保险', s:'执行器 · 双联锁', k:'act',
+   role:'执行器', ca:'指向驱动、保险解除/回锁', fb:'保险微动开关（硬线）',
+   fail:'保险未真正解除却回读为已解除（最危险）；伺服漂移'},
+  {id:'n8', x:40,y:480,w:330,h:54, t:'平台运动与位姿（被控过程）', s:'CONTROLLED PROCESS', k:'proc',
+   role:'被控过程', ca:'—', fb:'—',
+   fail:'打滑、侧翻、坠落、冲撞人员或设施'},
+  {id:'n9', x:430,y:480,w:190,h:54, t:'载荷指向与击发（过程）', s:'CONTROLLED PROCESS', k:'proc',
+   role:'被控过程', ca:'—', fb:'—',
+   fail:'指向扫过己方/平民；未授权击发；哑弹与迟发'},
+  {id:'n10', x:680,y:366,w:280,h:54, t:'传感器组', s:'IMU×2 / GNSS / 视觉 / 激光 / 编码器', k:'sens',
+   role:'传感器（反馈源）', ca:'—', fb:'位姿、速度、障碍、目标、关节状态',
+   fail:'IMU 漂移、视觉致盲、GNSS 欺骗、编码器卡死 → 反馈错误'},
+  {id:'n11', x:680,y:250,w:280,h:54, t:'通信链路与中继', s:'自组网 · 双频 · 卫通备份', k:'ext',
+   role:'外部（信息通道）', ca:'CA-08 链路/中继切换', fb:'链路质量、时延、丢包',
+   fail:'干扰、欺骗节点、双主控、切换失败'},
+  {id:'n12', x:680,y:134,w:280,h:54, t:'编队友军 / 无人机', s:'外部系统 · IC-03/IC-04', k:'ext',
+   role:'外部协同方', ca:'协同任务、目标指示', fb:'态势、位置、毁伤评估',
+   fail:'坐标基准不一致；协同消息伪造；任务冲突'},
+  {id:'n13', x:680,y:480,w:280,h:54, t:'战场环境（地形/干扰/敌方）', s:'约束与威胁源', k:'ext',
+   role:'外部环境', ca:'—', fb:'—',
+   fail:'地形突变、烟尘、电子战压制、敌方物理攻击'}
+];
+const EDGES = [
+  {d:'M240,78 L240,134', c:'ctl', lb:'CA-01', lx:246, ly:110},
+  {d:'M200,188 L200,220 L140,220 L140,250', c:'ctl', lb:'CA-03', lx:150, ly:214},
+  {d:'M300,188 L300,220 L370,220 L370,250', c:'ctl', lb:'CA-05', lx:378, ly:214},
+  {d:'M140,304 L140,366', c:'ctl', lb:'CA-03', lx:146, ly:340},
+  {d:'M200,304 L200,336 L320,336 L320,366', c:'ctl', lb:'CA-02', lx:236, ly:330},
+  {d:'M370,304 L370,366', c:'ctl', lb:'CA-04', lx:376, ly:340},
+  {d:'M115,420 L115,480', c:'ctl'},
+  {d:'M320,420 L320,450 L260,450 L260,480', c:'ctl'},
+  {d:'M525,420 L525,480', c:'ctl'},
+  {d:'M205,534 L205,578 L650,578 L650,385 L680,385', c:'fb', lb:'位姿 / 速度反馈', lx:250, ly:572},
+  {d:'M525,534 L525,556 L662,556 L662,405 L680,405', c:'fb', lb:'指向误差 / 保险状态', lx:536, ly:550},
+  {d:'M960,393 L972,393 L972,161 L360,161', c:'fb', lb:'状态反馈（健康 / 围栏 / 授权）', lx:404, ly:154},
+  {d:'M360,175 L660,175 L660,277 L680,277', c:'ctl', lb:'CA-08 链路切换', lx:478, ly:189},
+  {d:'M820,250 L820,188', c:'ctl'},
+  {d:'M370,495 L680,495', c:'env', lb:'地形作用', lx:470, ly:489}
+];
+const SVGNS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('ctrlSvg');
+EDGES.forEach(e=>{
+  const p = document.createElementNS(SVGNS,'path');
+  p.setAttribute('d', e.d); p.setAttribute('class','el '+e.c);
+  p.setAttribute('marker-end', e.c==='fb'?'url(#ar-v)':'url(#ar-g)');
+  svg.appendChild(p);
+  if(e.lb){
+    const t = document.createElementNS(SVGNS,'text');
+    t.setAttribute('x', e.lx); t.setAttribute('y', e.ly);
+    t.setAttribute('class', e.c==='fb'?'flb':'calb'); t.textContent = e.lb;
+    svg.appendChild(t);
+  }
+});
+CTRL.forEach(n=>{
+  const g = document.createElementNS(SVGNS,'g');
+  g.setAttribute('class','nd'); g.dataset.nid = n.id; g.dataset.k = n.k;
+  g.innerHTML = `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}"/>
+    <text x="${n.x+n.w/2}" y="${n.y+24}" text-anchor="middle">${n.t}</text>
+    <text x="${n.x+n.w/2}" y="${n.y+41}" text-anchor="middle" class="sub">${n.s}</text>`;
+  g.addEventListener('click',()=>renderCtrl(n.id));
+  svg.appendChild(g);
+});
+const CTP = $('#ctrlPanel');
+function renderCtrl(id){
+  const n = CTRL.find(x=>x.id===id);
+  $$('#ctrlSvg .nd').forEach(g=>g.classList.toggle('on', g.dataset.nid===id));
+  const kind = {ctrl:'控制器（Controllers）',act:'执行器（Actuators）',proc:'被控过程（Controlled Process）',sens:'传感器（Sensors）',ext:'外部 / 上级控制器'}[n.k];
+  CTP.innerHTML = `<div class="ph"><div class="pid">${kind.split('（')[0].toUpperCase()}</div><h3>${n.t}</h3><div class="tag">${n.s}</div></div>
+    <div class="kv">${kvRow('角色', `<b>${kind}</b> · ${n.role}`)}
+    ${kvRow('控制动作 / 输出', n.ca)}${kvRow('反馈 / 输入', n.fb)}
+    ${kvRow('典型失效模式', `<b style="color:var(--alert)">${n.fail}</b>`)}</div>`;
+}
+renderCtrl('n2');
+
+const CA = [
+  ['CA-01','下达 / 变更任务','指挥所或操作员 → 任务管理计算机：目标点、搜索区、交战授权范围'],
+  ['CA-02','轮/腿模式切换','运动控制 → 切换机构：触发时机、切换前条件、锁定确认'],
+  ['CA-03','速度与步态设定','运动控制 → 轮毂/关节：速度剖面、步态、限速区'],
+  ['CA-04','载荷保险解除与击发授权','载荷控制 → 保险与击发回路：授权校验、解除、击发、回锁'],
+  ['CA-05','载荷指向与跟踪','载荷控制 → 伺服：指向角、跟踪目标、稳定补偿'],
+  ['CA-06','人工接管 / 退出接管','操作员 ↔ 控制器：权限切换、指令优先级、平滑过渡'],
+  ['CA-07','失效降级 / 返航','控制器 → 状态机：触发条件、降级等级、返航路径'],
+  ['CA-08','链路 / 中继切换','任务管理 → 通信：切换时机、节点选择、认证']
+];
+$('#caList').innerHTML = CA.map(c=>`<div class="sr"><div class="sid">${c[0]}</div><div class="stx"><b>${c[1]}</b> · ${c[2]}</div></div>`).join('');
+
+/* ============ STPA 数据 ============ */
+const LOSS = [
+  ['L-1','人员伤亡','我方操作员、伴随步兵或友邻部队人员被平台撞击、碾压或误伤','LOSS'],
+  ['L-2','平民伤亡 / 民用资产损毁','附带损伤超出 ROE 允许范围，引发政治与法律后果','LOSS'],
+  ['L-3','平台损毁或不可恢复失效','倾覆、坠落、热失控、被毁伤，造成装备与任务损失','LOSS'],
+  ['L-4','误击己方 / 友邻（fratricide）','目标识别或协同失效导致打击本方单位','LOSS'],
+  ['L-5','敏感数据与装备落入敌方','平台被缴获时数据未清除、载荷仍处于可作用状态','LOSS'],
+  ['L-6','任务失败','未在规定时间窗口内达成侦察/打击目标','LOSS']
+];
+$('#lossGrid').innerHTML = LOSS.map(l=>`<div class="cell a reveal"><div class="idx">${l[0]}</div><h3>${l[1]}</h3><p>${l[2]}</p></div>`).join('');
+
+const HZ = [
+  ['H-1','平台在人员可进入区域内产生非预期运动（冲撞/碾压）','L-1','SC-1 平台在人员可进入区域内不得产生未受监督的运动','UCA-03-1 / UCA-06-2 / UCA-07-1','SAF-01 / SAF-02'],
+  ['H-2','平台在不稳定地形倾覆或坠落','L-1, L-3','SC-2 姿态包线外或地形不确定时不得保持高速、不得执行切换','UCA-02-2 / UCA-02-3 / UCA-03-2','SAF-02 / SAF-07 / SAF-08'],
+  ['H-3','武器在非授权条件下击发','L-1, L-4','SC-3 未经双人授权与机械保险解除，武器不得击发','UCA-04-2 / UCA-04-4 / UCA-05-2','SAF-01 / SAF-03 / SAF-09'],
+  ['H-4','平台对非目标（己方/平民/民用设施）实施打击','L-2, L-4','SC-4 目标须经多源交叉与人在回路确认后才可打击','UCA-01-2 / UCA-04-2 / UCA-05-3','SAF-04 / SAF-06'],
+  ['H-5','失联后继续执行攻击性或高速机动动作','L-1, L-3, L-2','SC-5 失联 ≥60 s 必须进入安全状态（降速停车/返航/保险上锁）','UCA-07-1 / UCA-08-1 / UCA-08-3','SAF-05 / SAF-09'],
+  ['H-6','平台越出授权区域或进入禁区','L-2, L-5','SC-6 平台不得越出地理围栏（软/硬双重）','UCA-01-2 / UCA-06-4 / UCA-07-3','SAF-06'],
+  ['H-7','平台在载荷激活或数据未清除状态下被缴获','L-5','SC-7 撤离或被缴获风险下必须完成数据清除与弹药保险','UCA-04-4 / UCA-07-4','SAF-10'],
+  ['H-8','电池热失控或载荷意外作用引发火灾','L-1, L-3','SC-8 电池须在三级保护下工作，热失控须可泄压、可隔离','UCA-03-4 / UCA-07-4','SAF-11']
+];
+const HZB = $('#hzBtns'), HZP = $('#hzPanel');
+HZ.forEach((h,i)=>{
+  const b = el('button','fbtn'+(i===0?' on':''), h[0]);
+  b.addEventListener('click',()=>{ $$('#hzBtns .fbtn').forEach(x=>x.classList.remove('on')); b.classList.add('on'); renderHz(i); });
+  HZB.appendChild(b);
+});
+function renderHz(i){
+  const h = HZ[i];
+  HZP.innerHTML = `<div class="ph"><div class="pid">${h[0]}</div><h3>${h[1]}</h3><div class="tag">→ ${h[2]}</div></div>
+    <div class="kv">${kvRow('关联损失', `<span class="badge r">${h[2]}</span>`)}
+    ${kvRow('安全约束', `<b style="color:var(--neon)">${h[3]}</b>`)}
+    ${kvRow('相关 UCA', h[4].split(' / ').map(u=>`<span class="badge c">${u}</span>`).join(''))}
+    ${kvRow('派生安全需求', h[5].split(' / ').map(s=>`<span class="badge v">${s}</span>`).join(''))}</div>`;
+}
+renderHz(0);
+
+const UCA = {
+  'CA-01':[
+    ['未提供','操作员下达任务后平台未回执确认，仍执行上一任务，进入错误区域','UCA-01-1','H-4'],
+    ['错误提供','下发的目标点位于己方阵地内或围栏之外，平台径直前往','UCA-01-2','H-4, H-6'],
+    ['过早/过晚','在模式切换未完成、载荷保险未解除前下发交战任务','UCA-01-3','H-3'],
+    ['持续过久','任务已撤销，平台仍持续执行原搜索/交战指令','UCA-01-4','H-4']
+  ],
+  'CA-02':[
+    ['未提供','遇台阶/废墟未切换腿行，继续轮行高速冲撞障碍','UCA-02-1','H-2'],
+    ['错误提供','在斜坡边缘或松软地基执行切换，切换过程中失稳倾覆','UCA-02-2','H-2'],
+    ['过早/过晚','距障碍过近才触发切换，未完成即接触障碍','UCA-02-3','H-2'],
+    ['持续过久','切换完成后锁止未生效，行驶中机构自行解锁','UCA-02-4','H-2']
+  ],
+  'CA-03':[
+    ['未提供','接近人员密集区/楼道口未降速，保持巡航速度通过','UCA-03-1','H-1'],
+    ['错误提供','在狭窄楼道或楼板边缘设定高速，撞击墙体或压塌楼板','UCA-03-2','H-2'],
+    ['过早/过晚','下坡前未提前降速，进入坡道后制动不足','UCA-03-3','H-2'],
+    ['持续过久','通过障碍后仍保持腿行低速，暴露时间过长被敌方打击','UCA-03-4','H-8']
+  ],
+  'CA-04':[
+    ['未提供','近距遭遇威胁时保险未解除，无法自卫，平台被摧毁','UCA-04-1','H-3'],
+    ['错误提供','在非授权目标方向解除保险并击发，命中己方或平民','UCA-04-2','H-3, H-4'],
+    ['过早/过晚','授权链路延迟，目标已移动或已出现友邻时击发','UCA-04-3','H-4'],
+    ['持续过久','击发后保险未回锁，转移途中误触或跌落触发','UCA-04-4','H-3, H-7']
+  ],
+  'CA-05':[
+    ['未提供','目标出现在射界内但未输出指向指令，错失交战窗口','UCA-05-1','H-4'],
+    ['错误提供','指向指令使炮口扫过己方阵地或平民区（扫掠危险）','UCA-05-2','H-3, H-4'],
+    ['过早/过晚','跟踪滞后于目标运动，指向偏离后仍在授权范围内击发','UCA-05-3','H-4'],
+    ['持续过久','目标消失后仍保持跟踪并指向原方位，遇友邻通过即危险','UCA-05-4','H-4']
+  ],
+  'CA-06':[
+    ['未提供','自主决策异常（反复绕行/停滞）时未及时接管，任务失败','UCA-06-1','H-5'],
+    ['错误提供','接管瞬间两套控制器同时输出，产生急停或猛打方向','UCA-06-2','H-1, H-2'],
+    ['过早/过晚','在模式切换过程中接管，指令被状态机丢弃未察觉','UCA-06-3','H-5'],
+    ['持续过久','接管后未交回自主，单人长时间操控导致疲劳与漏看告警','UCA-06-4','H-6']
+  ],
+  'CA-07':[
+    ['未提供','链路中断 60 s 未触发降级，平台继续执行攻击性动作','UCA-07-1','H-5'],
+    ['错误提供','在狭窄坑道内触发返航，倒退撞塌结构或碾压伴随人员','UCA-07-2','H-1, H-2'],
+    ['过早/过晚','低电量阈值设置过晚，返航途中电量耗尽停在暴露地段','UCA-07-3','H-6'],
+    ['持续过久','故障恢复后仍锁定在降级模式，无法恢复任务能力','UCA-07-4','H-8']
+  ],
+  'CA-08':[
+    ['未提供','主链路持续劣化但未切换，控制中断进入失联','UCA-08-1','H-5'],
+    ['错误提供','切换到未通过认证的节点（诱骗/错误 ID），指令被劫持','UCA-08-2','H-6'],
+    ['过早/过晚','切换时机不当造成双主控，两路指令冲突','UCA-08-3','H-5'],
+    ['持续过久','中继已失效仍指向该节点，长时间无有效链路','UCA-08-4','H-5']
+  ]
+};
+const UB = $('#caBtns'), UW = $('#ucaWrap');
+Object.keys(UCA).forEach((k,i)=>{
+  const b = el('button','fbtn'+(i===0?' on':''), k);
+  b.addEventListener('click',()=>{ $$('#caBtns .fbtn').forEach(x=>x.classList.remove('on')); b.classList.add('on'); renderUCA(k); });
+  UB.appendChild(b);
+});
+function renderUCA(k){
+  const rows = UCA[k];
+  UW.innerHTML = `<div class="ucah"><div>类型</div><div>不安全控制动作（UCA）描述</div></div>` +
+    rows.map(r=>`<div class="ucar"><div class="ut">${r[0]}</div>
+      <div class="ub"><span class="u">${r[2]}</span>${r[1]}<span class="h">→ ${r[3]}</span></div></div>`).join('');
+}
+renderUCA('CA-01');
+
+const SCEN = [
+  ['S-1','控制器收到错误反馈 · 感知漏检','烟尘或强光下视觉失效，激光在雨雾中衰减，融合结果把台阶判为平地；任务管理计算机据此规划轮行高速通过。','UCA-02-1 / UCA-03-1','SAF-02 / SAF-07','增加「地形置信度低即限速」规则；感知退化须显式上报并降级'],
+  ['S-2','反馈缺失 · 保险状态回读错误','机械保险未真正解除，微动开关因结冰卡在「已解除」位置；载荷控制计算机校验通过并允许击发。','UCA-04-2（前置校验失效）','SAF-03 / SAF-09','保险状态改为双路冗余回读 + 击发前强制动作自检；不一致即拒绝'],
+  ['S-3','控制器算法/模型不当 · 围栏判定','围栏使用未校准的定位结果；组合导航在长走廊漂移 1.8%，越界被判定为「仍在界内」。','UCA-01-2 / UCA-06-4','SAF-06','围栏判定采用保守膨胀 + 定位不确定度上限；超限即降速'],
+  ['S-4','执行器响应不足 · 制动能力','满载下坡时制动器热衰退，实际减速度低于指令；速度环认为已减速，实际仍在加速。','UCA-03-3','SAF-07 / SAF-02','引入制动器温度模型与减速度闭环校验；超差即报警并转机械制动'],
+  ['S-5','人因 · 监督负荷','单操作员同时监督 3 台，告警刷屏导致关键告警被淹没；接管延迟 40 s。','UCA-06-1 / UCA-06-4','SAF-12 / QR-05','告警分级与聚合；关键告警强制确认；超时不响应自动进入安全状态'],
+  ['S-6','接口不同步 · 双主控','切换中继时旧链路未注销，两路指令同时到达；平台执行了先到的高优先级但已过期的指令。','UCA-08-3','SAF-05 / SAF-10','指令带序号与时间戳，过期即丢弃；切换采用「先断后建」+ 单主控令牌'],
+  ['S-7','对抗 · 链路欺骗','敌方以高功率仿冒节点广播更优信号，平台按 RSSI 切换并接受伪造的「解除保险」指令。','UCA-08-2','SAF-10','节点准入采用双向证书 + 指令签名；保险类指令要求双因子令牌'],
+  ['S-8','能量/热失效','电池单体过温但 BMS 通信偶发丢帧，温度未及时上报；持续大电流输出导致热失控。','UCA-03-4','SAF-11','温度采用硬线独立采样（不经总线）；丢帧即降载；隔舱与泄压']
+];
+$('#scAcc').innerHTML = SCEN.map((s,i)=>`<div class="acc-i${i===0?' open':''}">
+  <div class="acc-h"><div class="no">${s[0]}</div><h4>${s[1]}</h4><div class="sum">${s[2].slice(0,40)}…</div><div class="arw">▸</div></div>
+  <div class="acc-b"><p>${s[2]}</p>
+    <p style="margin-top:6px"><span class="badge c">${s[3]}</span> → <span class="badge v">${s[4]}</span></p>
+    <p style="margin-top:4px"><b>对应措施：</b>${s[5]}</p></div></div>`).join('');
+
+/* ============ 安全需求 ============ */
+const SAF = [
+  ['SAF-01','双通道急停','系统应设置独立于任务计算机的硬件急停回路，触发后 ≤200 ms 切断驱动使能与武器击发回路。','SC-1/SC-3 · H-1/H-3','试验'],
+  ['SAF-02','独立安全监控','安全监控器应以 ≤50 ms 周期校验指令合法性与姿态/围栏/速度包线，越界即降速或停车，且不受任务计算机控制。','SC-2 · H-2','试验'],
+  ['SAF-03','授权互锁','击发须同时满足：指挥员与操作员双因子授权、机械保险解除硬线回读、目标在授权区内；任一缺失即拒绝并记录。','SC-3 · H-3','演示+检查'],
+  ['SAF-04','目标确认链','打击目标须经 ≥2 类传感器交叉确认并经人在回路确认；置信度低于阈值时仅允许上报，不允许击发。','SC-4 · H-4','演示'],
+  ['SAF-05','失联安全状态机','链路中断 60 s 进入降速停车、90 s 武器保险自动上锁、120 s 自主返航或就地隐蔽；重连后须人工确认方可恢复。','SC-5 · H-5','试验'],
+  ['SAF-06','地理围栏','应设软围栏（告警）与硬围栏（禁止进入）；围栏数据须签名校验，越界前 20 m 预警并自动减速。','SC-6 · H-6','试验'],
+  ['SAF-07','姿态包线保护','倾角或角速度超出包线时自动限速与制动；下坡前依据坡度与载荷自动限制速度上限。','SC-2 · H-2','试验'],
+  ['SAF-08','模式切换联锁','切换须同时满足「静止 + 姿态合规 + 机构锁定反馈」；切换失败保持原模式并告警，切换过程禁止行进。','SC-2 · H-2','试验'],
+  ['SAF-09','击发后自动回锁','击发完成后 3 s 内保险自动回锁；转移、越障、接管等状态与击发回路互锁。','SC-3 · H-3','检查'],
+  ['SAF-10','数据与装备保护','存储加密、日志抗篡改；撤离或被缴获风险下一键数据销毁 ≤60 s；载荷具备机械保险。','SC-7 · H-7','演示'],
+  ['SAF-11','电池三级保护','BMS 三级保护 + 硬线独立测温 + 热失控泄压与隔舱；温度异常强制降载并上报。','SC-8 · H-8','试验'],
+  ['SAF-12','黑匣子日志','控制指令、授权人、传感器原始数据留存 ≥30 天，掉电不丢、时间戳可信，供事故调查与合规审计。','SC-3/SC-4 可追溯','检查']
+];
+const SF = $('#safFilters'), SL = $('#safList');
+const safCats = ['全部','架构措施','互锁/权限','降级与保护','可追溯'];
+let safCat = '全部';
+const safTypeOf = s => s[0]==='SAF-01'||s[0]==='SAF-02'||s[0]==='SAF-06'||s[0]==='SAF-07'||s[0]==='SAF-08'||s[0]==='SAF-11' ? '架构措施'
+  : (s[0]==='SAF-03'||s[0]==='SAF-04'||s[0]==='SAF-09') ? '互锁/权限'
+  : (s[0]==='SAF-05'||s[0]==='SAF-10') ? '降级与保护' : '可追溯';
+safCats.forEach((c,i)=>{
+  const n = c==='全部'?SAF.length:SAF.filter(s=>safTypeOf(s)===c).length;
+  const b = el('button','fbtn'+(i===0?' on':''), `${c}<span class="c">${n}</span>`);
+  b.addEventListener('click',()=>{ safCat=c; $$('#safFilters .fbtn').forEach(x=>x.classList.remove('on')); b.classList.add('on'); renderSAF(); });
+  SF.appendChild(b);
+});
+function renderSAF(){
+  const rows = SAF.filter(s=>safCat==='全部'||safTypeOf(s)===safCat);
+  SL.innerHTML = rows.map(s=>`<div class="sr"><div class="sid">${s[0]}</div><div class="stx"><b>${s[1]}</b> · ${s[2]}</div>
+    <div class="smt"><span class="badge v">${s[3]}</span><span class="src">${s[4]}</span></div></div>`).join('') || '<div class="empty">无匹配</div>';
+}
+renderSAF();
+
+/* ============ 故障注入 ============ */
+const FAULTS = [
+  {n:'F-01', t:'任务控制器误发「全速前进」', chain:[
+    ['任务计算机输出 20 km/h 指令','ch'],['安全监控器 50 ms 内比对速度包线 / 围栏 / 姿态','ch ok'],
+    ['判定越界（>12 km/h @ 城区）','ch warn'],['硬件断链切断驱动使能 ≤200 ms','ch ok'],
+    ['进入受限模式并告警上报','ch ok'],['操作员确认后人工恢复','ch']
+  ], r:'预期结果：平台在 ≈0.3 m 内停车，未发生冲撞；事件与指令原文进入黑匣子。'},
+  {n:'F-02', t:'链路中断 60 s 未恢复', chain:[
+    ['心跳超时 60 s（任务计算机判定）','ch warn'],['状态机进入安全：降速停车','ch ok'],
+    ['90 s：武器保险自动上锁（硬线）','ch ok'],['120 s：自主返航或就地隐蔽','ch ok'],
+    ['重连后需人工确认方可恢复任务','ch ok']
+  ], r:'预期结果：无「失联后继续攻击」路径；返航路径由安全通道独立规划，不依赖原任务上下文。'},
+  {n:'F-03', t:'伪造「解除保险」指令', chain:[
+    ['伪造指令到达载荷控制计算机','ch bad'],['签名/令牌校验失败','ch ok'],
+    ['机械保险位置反馈仍为「锁定」','ch ok'],['AND 门不成立 → 拒绝执行','ch ok'],
+    ['记录并上报指挥所（含来源标识）','ch ok']
+  ], r:'预期结果：击发回路不动作；攻击尝试被记录，可作为电子战态势情报。'},
+  {n:'F-04', t:'轮腿切换中锁定失效', chain:[
+    ['切换指令执行，机构动作','ch'],['切换完成但锁定到位信号缺失','ch bad'],
+    ['安全监控器判定「未锁定」','ch ok'],['禁止行驶（驱动使能保持断开）','ch ok'],
+    ['回退到原模式或请求人工处置','ch ok']
+  ], r:'预期结果：不会出现「未锁定仍高速行驶」；切换失败可在 30 s 内回退。'}
+];
+const FB = $('#faultBtns'), FP = $('#faultPanel');
+FAULTS.forEach((f,i)=>{
+  const d = el('div','flt'+(i===0?' on':''), `<div class="fn">${f.n} · INJECT</div><div class="ft">${f.t}</div>`);
+  d.addEventListener('click',()=>{ $$('#faultBtns .flt').forEach(x=>x.classList.remove('on')); d.classList.add('on'); renderFault(i); });
+  FB.appendChild(d);
+});
+function renderFault(i){
+  const f = FAULTS[i];
+  FP.innerHTML = `<div class="ph"><div class="pid">${f.n}</div><h3>${f.t}</h3><div class="tag">响应链</div></div>
+    <div class="chain">${f.chain.map((c,k)=>`<span class="ch ${c[1].replace('ch','').trim()}">${c[0]}</span>${k<f.chain.length-1?'<span class="ch-arrow">→</span>':''}`).join('')}</div>
+    <p style="font-size:12.4px;color:#9fb0ba;margin-top:12px;border-left:2px solid var(--neon);background:var(--neon-soft);padding:8px 12px">${f.r}</p>`;
+}
+renderFault(0);
+
+/* ============ 追溯 ============ */
+const TRACE = {
+  'BR-01':{t:'在高危地形以无人平台替代人员进入',rows:[
+    ['相关方','SR-01 昼夜间识别 ≥90% / SR-20 抗毁伤 / SR-26 附带损伤约束'],
+    ['系统需求','FR-01 / FR-02（感知）· PR-01（识别距离）· SAF-05（失联安全）'],
+    ['架构落点','功能架构 F1/F2；逻辑架构 L1 感知融合层；物理 PH-05 传感器组'],
+    ['安全需求','SAF-02 独立监控、SAF-05 失联降级'],
+    ['待补','对抗性电子战条件下的识别退化指标']]},
+  'BR-02':{t:'轮行高速 + 腿行越障的复合机动',rows:[
+    ['相关方','SR-05 速度 / SR-06 越障 / SR-07 爬坡 / SR-09 切换'],
+    ['系统需求','FR-07 / FR-08 · PR-04 / PR-05 / PR-06'],
+    ['架构落点','F4 轮腿运动控制；L3 执行层；PH-06 轮腿机构与驱动'],
+    ['安全需求','SAF-07 姿态包线、SAF-08 切换联锁'],
+    ['待补','软地基与松软坡面的通过性指标']]},
+  'BR-03':{t:'地面末端节点纳入有人无人协同体系',rows:[
+    ['相关方','SR-10 拒止导航 / SR-12 链路中断 / SR-14 组网 / SR-15 统一消息'],
+    ['系统需求','FR-11 / FR-12 · PR-03 / PR-09 · IR-02/03/04'],
+    ['架构落点','F6 通信协同；L2 协同层；PH-04 链路终端'],
+    ['安全需求','SAF-05 失联状态机、SAF-06 围栏、SAF-10 指令签名'],
+    ['待补','多平台时间同步与坐标基准一致性验证方法']]},
+  'BR-04':{t:'侦察—识别—决策—打击闭环 ≤60 s',rows:[
+    ['相关方','SR-03 打击精度 / SR-04 闭环时间'],
+    ['系统需求','FR-03 / FR-05 / FR-10 · PR-07 / PR-08 · IR-05'],
+    ['架构落点','F3 规划 + F5 载荷火力；L2 决策层；PH-08 载荷接口与保险'],
+    ['安全需求','SAF-03 授权互锁、SAF-04 目标确认链、SAF-09 击发回锁'],
+    ['待补','授权链路在强干扰下的时延上界']]},
+  'BR-05':{t:'降低使用门槛与保障负担',rows:[
+    ['相关方','SR-21 换电 / SR-22 维修 / SR-23 展开 / SR-24 训练'],
+    ['系统需求','FR-13 / FR-15 · PR-10 / PR-12 / PR-13 · QR-05 / QR-06'],
+    ['架构落点','F7/F8；物理架构模块化快换与 BIT'],
+    ['安全需求','SAF-12 日志、SAF-11 电池保护（保障安全）'],
+    ['待补','8 h 训练达成基本任务的人因试验数据']]},
+  'BR-06':{t:'合规、可追溯、伦理可接受',rows:[
+    ['相关方','SR-16 抗干扰加密 / SR-17 人在回路 / SR-18 / SR-19 EMC / SR-25 日志'],
+    ['系统需求','FR-16 · QR-03 / QR-04 / QR-07 · IR-08'],
+    ['架构落点','安全通道独立；黑匣子；权限三级'],
+    ['安全需求','SAF-03 / SAF-10 / SAF-12'],
+    ['待补','自主武器规则条文的逐条符合性矩阵']]},
+  'BR-07':{t:'多平台编组、单人监督多台',rows:[
+    ['相关方','SR-13 单人 ≥3 台 / SR-14 组网'],
+    ['系统需求','FR-11 / FR-12 · PR-13 · IR-03'],
+    ['架构落点','L2 协同层；终端多机管理界面'],
+    ['安全需求','SAF-05（批量失联处置）、SAF-12（多机日志聚合）'],
+    ['待补','多机同时告警时的处置优先级规则']]},
+  'BR-08':{t:'开放式架构支持载荷与算法迭代',rows:[
+    ['相关方','SR-02 载荷互换 ≤10 min'],
+    ['系统需求','FR-09 · QR-06 · IR-05'],
+    ['架构落点','PH-08 快换接口；软件容器化与签名升级'],
+    ['安全需求','SAF-10（升级须签名，防降级攻击）'],
+    ['待补','第三方载荷的准入测试规范']]}
+};
+const TRB = $('#trBtns'), TRP = $('#trPanel');
+Object.keys(TRACE).forEach((k,i)=>{
+  const b = el('button','fbtn'+(i===0?' on':''), k + ' · ' + TRACE[k].t.slice(0,10));
+  b.style.textAlign='left';
+  b.addEventListener('click',()=>{ $$('#trBtns .fbtn').forEach(x=>x.classList.remove('on')); b.classList.add('on'); renderTrace(k); });
+  TRB.appendChild(b);
+});
+function renderTrace(k){
+  const t = TRACE[k];
+  TRP.innerHTML = `<div class="ph"><div class="pid">${k}</div><h3>${t.t}</h3><div class="tag">全链追溯</div></div>
+    <div class="kv">${t.rows.map(r=>kvRow(r[0], r[1])).join('')}</div>`;
+}
+renderTrace('BR-01');
+
+$('#matrixTbl').innerHTML = `<thead><tr><th>业务需求</th><th>相关方需求</th><th>系统需求（FR / PR）</th><th>安全需求</th><th>验证</th></tr></thead>
+<tbody>${Object.keys(TRACE).map(k=>{
+  const r = TRACE[k].rows;
+  return `<tr><td>${k}</td><td>${r[0][1].split(' / ').map(x=>x.slice(0,6)).join(' · ')}</td><td>${r[1][1]}</td><td>${r[3][1]}</td><td>试验/演示</td></tr>`;
+}).join('')}</tbody>`;
+
+$('#reviewKv').innerHTML = kvRow('需求总数','FR 16 · PR 14 · IR 08 · QR 08 · SAF 12（合计 58 条）')
+  + kvRow('追溯性','BR 8 条全部可追溯到 SR 与 SyRS，无孤儿需求')
+  + kvRow('待补项','4 项（见右侧），均为指标级而非结构性缺失')
+  + kvRow('结论','可作为架构设计与分系统研制的初始基线，进入下一轮迭代');
+
+$('#openKv').innerHTML = kvRow('O-1','多项指标为工程假定值，需与总体单位基线核对后固化')
+  + kvRow('O-2','安全通道与任务通道的独立性未做共因失效（CCF）分析')
+  + kvRow('O-3','人工接管（CA-06）时延与权限切换人因数据缺失')
+  + kvRow('O-4','STPA 仅展开至第二层控制回路，敌方电子战场景覆盖不足');
+
+/* ============ 通用交互 ============ */
+$$('.acc-h').forEach(h=>h.addEventListener('click',()=>h.parentElement.classList.toggle('open')));
+
+const progress = $('#progress');
+const topBtn = $('#topBtn');
+const steps = $$('.step');
+const ids = steps.map(s=>s.dataset.target);
+function goTo(id){
+  const e = document.getElementById(id);
+  if (!e) return;
+  const top = e.getBoundingClientRect().top + window.scrollY - 84;
+  window.scrollTo({top, behavior:'smooth'});
+}
+steps.forEach(s=>s.addEventListener('click',()=>goTo(s.dataset.target)));
+let currentIdx = 0;
+window.addEventListener('scroll', ()=>{
+  const h = document.documentElement;
+  progress.style.width = (h.scrollTop/(h.scrollHeight-h.clientHeight)*100) + '%';
+  topBtn.classList.toggle('show', h.scrollTop > 600);
+  let cur = null, idx = 0;
+  ids.forEach((id,i)=>{
+    const e = document.getElementById(id);
+    if (e && e.getBoundingClientRect().top < 220){ cur = id; idx = i; }
+  });
+  currentIdx = idx;
+  steps.forEach(s=>s.classList.toggle('active', s.dataset.target===cur));
+}, {passive:true});
+topBtn.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+
+document.addEventListener('keydown', e=>{
+  if (e.target.tagName === 'INPUT') return;
+  const k = e.key.toLowerCase();
+  if (k==='j' || e.key==='ArrowDown'){ e.preventDefault(); goTo(ids[Math.min(currentIdx+1, ids.length-1)]); }
+  if (k==='k' || e.key==='ArrowUp'){ e.preventDefault(); goTo(ids[Math.max(currentIdx-1, 0)]); }
+  if (e.key==='Escape'){ $$('.acc-i.open').forEach(a=>a.classList.remove('open')); }
+});
+
+const io = new IntersectionObserver(entries=>{
+  entries.forEach(en=>{ if (en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
+}, {threshold:.08});
+$$('.reveal').forEach(e=>io.observe(e));
+/* 兜底：若观察器未触发（如打印、无头渲染），1.2 s 后全部显示，避免内容不可见 */
+setTimeout(()=>$$('.reveal:not(.in)').forEach(e=>e.classList.add('in')), 1200);
+</script>
+
+</body>
+</html>

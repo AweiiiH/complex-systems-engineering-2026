@@ -306,7 +306,7 @@
       <div class="kicker">Complex Systems Engineering · Assignment 02</div>
       <h1>概念定义与分析<br><em>业务/任务</em>与<em>相关方需求</em></h1>
       <div class="chain"><b>问题域</b> → <b>方案域</b> · ConOps <i>组织层</i> → OpsCon <i>系统层</i> → BRS / StRS</div>
-      <p class="lede">以轮腿式无人作战平台为对象，完成业务与任务分析、相关方识别与需求定义，输出业务需求规格说明（BRS，表4-1）与相关方需求规格说明（StRS，表4-5）。页面内所有图表均可点选。</p>
+      <p class="lede">以轮腿式无人作战平台为对象，把任务场景、相关方与他们的要求理清楚，写成业务需求规格说明（BRS）和相关方需求规格说明（StRS）。</p>
     </div>
     <div class="stack">
       <div class="stk"><div class="n">LAYER 01</div><div class="t">组织使命 / 战略<i>为什么要建这个能力</i></div></div>
@@ -453,7 +453,7 @@
         <div class="en">以本系统为核心的一对多交互；说做什么、为什么，不说怎么做</div>
       </div>
     </div>
-    <p class="lv-desc reveal">把 ConOps 的全局画面收窄到本系统。按运行阶段拆解，每个阶段从<b>参与者、输入输出、物理环境、互操作系统、政策约束、典型异常</b>六要素定义（参考教材起落架案例的活动分解方法）。</p>
+    <p class="lv-desc reveal">把 ConOps 的全局画面收窄到这台整机。按运行阶段拆开，每个阶段从<b>参与者、输入输出、物理环境、互操作系统、政策约束、典型异常</b>六个方面写。</p>
 
     <p class="lv-desc reveal" style="margin:0 0 8px">点击阶段切换：</p>
     <div class="rail reveal" id="stageRail"></div>
@@ -550,7 +550,7 @@
       <div>
         <div class="lv-tag" style="color:var(--neon)">Deliverable A · ISO/IEC/IEEE 29148</div>
         <h2>业务需求规格说明（BRS）</h2>
-        <div class="en">按教材表4-1 的 8 章轮廓输出；点击章节展开正文</div>
+        <div class="en">按标准大纲的 8 章成文</div>
       </div>
     </div>
     <p class="lv-desc reveal">BRS 站在<b>业务管理层面</b>，回答组织为什么要改变业务、如何利用系统促进业务。为便于评审，8 章默认折叠，标题右侧为章节摘要。</p>
@@ -657,7 +657,7 @@
       <div>
         <div class="lv-tag" style="color:var(--cyan)">Deliverable B · ISO/IEC/IEEE 29148</div>
         <h2>相关方需求规格说明（StRS）</h2>
-        <div class="en">按教材表4-5 的 8 章轮廓输出；与 BRS 的差别在抽象层次</div>
+        <div class="en">按标准大纲的 8 章成文，抽象层次比 BRS 低一级</div>
       </div>
     </div>
     <p class="lv-desc reveal">BRS 说“业务要什么成效”，StRS 说“系统在什么场景下必须做到什么”。两者章节名称高度相似，这是评审时最容易被追问的点。</p>
@@ -772,7 +772,7 @@
       <div class="kv" id="trKv"></div>
     </div>
 
-    <p class="lv-desc reveal" style="margin-top:26px">按教材评审准则自检（表4-7 摘要）：</p>
+    <p class="lv-desc reveal" style="margin-top:26px">按评审准则自查：</p>
     <div class="srlist reveal">
       <div class="sr"><div class="sid" style="color:var(--neon)">✔</div><div class="stx"><b>用相关方的语言表述</b>：§05 保留“原话 → 目的 → 需求”的转换过程，StRS §5 保留 UR 口语化需求。</div><div class="smt"><span class="badge g">符合</span></div></div>
       <div class="sr"><div class="sid" style="color:var(--neon)">✔</div><div class="stx"><b>有优先级</b>：必须 / 应该 / 可选三级，26 条全覆盖。</div><div class="smt"><span class="badge g">符合</span></div></div>
