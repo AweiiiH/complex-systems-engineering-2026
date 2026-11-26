@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>轮腿式无人作战平台 · 场景分层与运行设计条件 | 复杂系统工程 · 小组作业 04</title>
+<style>
+  :root{
+    --bg:#070b10; --bg2:#0b1118; --panel:#0d1420; --panel2:#101a29;
+    --ink:#d7e2e6; --muted:#5f7280; --dim:#3c4c5a;
+    --line:rgba(90,140,160,.16); --grid:rgba(80,130,150,.07);
+    --neon:#3ef29b; --neon-dim:rgba(62,242,155,.35); --neon-soft:rgba(62,242,155,.08);
+    --amber:#ffb454; --cyan:#4fd8ff; --alert:#ff5a5a; --violet:#b58cff;
+    --serif:"Songti SC","Noto Serif SC","STSong",Georgia,serif;
+    --sans:"PingFang SC","Microsoft YaHei","Segoe UI",sans-serif;
+    --mono:"SF Mono","JetBrains Mono","Cascadia Code",Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.8;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  ::selection{background:var(--neon);color:#04120b}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 32px;position:relative}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;background-image:
+    linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:48px 48px}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.3;
+    background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,0,0,.14) 3px 4px)}
+  #progress{position:fixed;top:0;left:0;height:2px;background:var(--neon);width:0;z-index:120;box-shadow:0 0 8px var(--neon-dim)}
+
+  .ticker{background:var(--bg2);border-bottom:1px solid var(--line);overflow:hidden;position:sticky;top:0;z-index:95;height:24px;display:flex;align-items:center}
+  .ticker .tk{white-space:nowrap;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--dim);animation:tick 36s linear infinite}
+  .ticker .tk b{color:var(--neon);font-weight:500}
+  .ticker .tk i{color:var(--amber);font-style:normal}
+  @keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+  nav{position:sticky;top:24px;z-index:90;background:rgba(7,11,16,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:54px}
+  .brand{display:flex;align-items:center;gap:11px}
+  .brand .dot{width:7px;height:7px;border-radius:50%;background:var(--neon);box-shadow:0 0 10px var(--neon-dim);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .brand .zh{font-family:var(--serif);font-weight:600;font-size:15px;letter-spacing:1px}
+  .brand .en{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
+  nav .links a{color:var(--muted);text-decoration:none;font-family:var(--mono);font-size:11px;margin-left:16px;letter-spacing:.5px;transition:color .2s}
+  nav .links a:hover{color:var(--neon);text-shadow:0 0 8px var(--neon-dim)}
+
+  header{position:relative;padding:70px 0 58px;border-bottom:1px solid var(--line);overflow:hidden}
+  header .halo{position:absolute;left:46%;top:-200px;width:680px;height:680px;transform:translateX(-50%);
+    background:radial-gradient(circle,var(--neon-soft) 0%,transparent 62%);pointer-events:none}
+  .hero{display:grid;grid-template-columns:1fr 300px;gap:52px;align-items:center}
+  .hero .kicker{font-family:var(--mono);font-size:10.5px;letter-spacing:4px;color:var(--neon);text-transform:uppercase;display:flex;align-items:center;gap:14px;margin-bottom:18px}
+  .hero .kicker::before{content:"";width:32px;height:1px;background:var(--neon);box-shadow:0 0 6px var(--neon-dim)}
+  .hero h1{font-family:var(--serif);font-size:39px;font-weight:600;line-height:1.34;letter-spacing:2px;color:#eef6f2;text-shadow:0 0 24px rgba(62,242,155,.14)}
+  .hero h1 em{font-style:normal;color:var(--neon)}
+  .hero .chain{font-family:var(--mono);font-size:12px;letter-spacing:1.4px;color:var(--muted);margin-top:18px;border:1px solid var(--line);display:inline-block;padding:8px 16px;background:rgba(13,20,32,.7)}
+  .hero .chain b{color:var(--neon);font-weight:500}
+  .hero .chain i{color:var(--amber);font-style:normal}
+  .hero .lede{font-size:14px;color:#8fa1ab;max-width:620px;margin-top:16px}
+
+  .stack{border:1px solid var(--line);background:rgba(11,17,24,.7)}
+  .stk{padding:11px 14px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:baseline;transition:.2s}
+  .stk:last-child{border-bottom:none}
+  .stk:hover{background:var(--neon-soft)}
+  .stk .n{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1.4px;flex:0 0 54px}
+  .stk .t{font-size:12.5px;color:#cfdadf}
+  .stk .t i{display:block;font-style:normal;font-size:11px;color:var(--muted)}
+  .stk.a .t{color:var(--amber)} .stk.c .t{color:var(--cyan)} .stk.v .t{color:var(--violet)}
+
+  .stepper-bar{background:rgba(11,17,24,.9);border-bottom:1px solid var(--line);position:sticky;top:78px;z-index:80}
+  .stepper{display:flex}
+  .step{flex:1;padding:11px 1px 10px;text-align:center;cursor:pointer;border-right:1px solid var(--line);transition:background .25s;position:relative}
+  .step:last-child{border-right:none}
+  .step::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:transparent;transition:all .25s}
+  .step:hover{background:var(--neon-soft)}
+  .step .no{font-family:var(--mono);font-size:9px;letter-spacing:1.6px;color:var(--dim)}
+  .step .name{font-size:12px;font-weight:600;margin-top:2px;color:#a9b8c0}
+  .step.active{background:var(--neon-soft)}
+  .step.active::after{background:var(--neon);box-shadow:0 0 8px var(--neon-dim)}
+  .step.active .name,.step.active .no{color:var(--neon)}
+
+  section.level{padding:56px 0;border-bottom:1px solid var(--line);position:relative;z-index:1}
+  .lv-head{display:flex;align-items:flex-end;gap:20px}
+  .lv-num{font-family:var(--mono);font-size:56px;font-weight:600;line-height:.82;color:transparent;-webkit-text-stroke:1px rgba(90,140,160,.3);user-select:none}
+  .lv-tag{font-family:var(--mono);font-size:9.5px;letter-spacing:2.6px;text-transform:uppercase;display:inline-flex;align-items:center;gap:9px}
+  .lv-tag::before{content:"◈";font-size:11px}
+  .lv-head h2{font-family:var(--serif);font-size:24px;font-weight:600;margin-top:6px;letter-spacing:1px;color:#eef6f2}
+  .lv-head .en{font-size:11.5px;color:var(--muted);margin-top:5px;letter-spacing:.5px}
+  .lv-desc{font-size:13.5px;color:#9fb0ba;max-width:900px;margin:16px 0 22px}
+  .lv-desc b{color:var(--neon);font-weight:600}
+  .lv-desc code,.k{font-family:var(--mono);font-size:11.5px;color:var(--amber);background:rgba(255,180,84,.08);padding:1px 5px;border:1px solid rgba(255,180,84,.2)}
+  .sec-sub{display:flex;align-items:center;gap:11px;font-family:var(--serif);font-size:17px;font-weight:600;letter-spacing:.5px;color:#e7efe9;margin:36px 0 12px}
+  .sec-sub::before{content:"";width:16px;height:1px;background:var(--cyan);opacity:.65}
+  .sec-sub span{font-family:var(--mono);font-size:10.5px;font-weight:400;letter-spacing:1.6px;color:var(--cyan);opacity:.9;padding:2px 7px;border:1px solid rgba(90,220,230,.25);background:rgba(90,220,230,.04)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+  .cell{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);padding:18px 18px 16px;position:relative;transition:border-color .25s,transform .25s,box-shadow .25s}
+  .cell:hover{border-color:var(--neon-dim);transform:translateY(-3px);box-shadow:0 8px 26px rgba(62,242,155,.08)}
+  .cell .idx{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--dim)}
+  .cell h3{font-family:var(--serif);font-size:15.5px;font-weight:600;margin:7px 0 6px;color:#e7efe9}
+  .cell p{font-size:12.2px;color:var(--muted);line-height:1.72}
+  .cell::before{content:"";position:absolute;top:0;left:0;width:30px;height:2px;background:var(--neon);box-shadow:0 0 8px var(--neon-dim)}
+  .cell.a::before{background:var(--amber);box-shadow:0 0 8px rgba(255,180,84,.4)}
+  .cell.c::before{background:var(--cyan);box-shadow:0 0 8px rgba(79,216,255,.4)}
+  .cell.v::before{background:var(--violet);box-shadow:0 0 8px rgba(181,140,255,.4)}
+  .cell.a h3{color:var(--amber)} .cell.c h3{color:var(--cyan)} .cell.v h3{color:var(--violet)}
+
+  .filters{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 14px;align-items:center}
+  .fbtn{font-family:var(--mono);font-size:10.5px;letter-spacing:1px;padding:6px 13px;border:1px solid var(--line);background:rgba(13,20,32,.7);color:var(--muted);cursor:pointer;transition:.18s}
+  .fbtn:hover{border-color:var(--neon-dim);color:var(--ink)}
+  .fbtn.on{background:var(--neon-soft);border-color:var(--neon);color:var(--neon)}
+
+  .panel{border:1px solid var(--line);background:rgba(13,20,32,.75);padding:18px 22px;position:relative;overflow:hidden}
+  .panel::before{content:"";position:absolute;top:0;left:0;width:44px;height:2px;background:var(--neon);box-shadow:0 0 8px var(--neon-dim)}
+  .panel .ph{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+  .panel .ph .pid{font-family:var(--mono);font-size:11px;color:var(--neon);letter-spacing:1.5px}
+  .panel .ph h3{font-family:var(--serif);font-size:16.5px;font-weight:600;color:#e7efe9}
+  .panel .ph .tag{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--muted);letter-spacing:1px}
+  .kv{border-top:1px solid var(--line)}
+  .kv .row{display:grid;grid-template-columns:86px 1fr;gap:14px;padding:6px 0;border-bottom:1px solid var(--line);font-size:12.2px}
+  .kv .row:last-child{border-bottom:none}
+  .kv .kk{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;color:var(--dim);padding-top:3px}
+  .kv .vv{color:#9fb0ba;line-height:1.7}
+  .kv .vv b{color:#dbe7e2}
+  .badge{display:inline-block;font-family:var(--mono);font-size:9.5px;padding:2px 7px;border:1px solid;letter-spacing:.8px;margin:2px 4px 2px 0}
+  .badge.g{color:var(--neon);border-color:var(--neon-dim);background:var(--neon-soft)}
+  .badge.y{color:var(--amber);border-color:rgba(255,180,84,.35);background:rgba(255,180,84,.07)}
+  .badge.c{color:var(--cyan);border-color:rgba(79,216,255,.35);background:rgba(79,216,255,.07)}
+  .badge.v{color:var(--violet);border-color:rgba(181,140,255,.35);background:rgba(181,140,255,.07)}
+  .badge.r{color:var(--alert);border-color:rgba(255,90,90,.35);background:rgba(255,90,90,.07)}
+
+  .duo{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;margin-top:20px}
+  @media (max-width:900px){ .duo{grid-template-columns:1fr} }
+
+  /* 六层模型 */
+  .layers-wrap{display:grid;grid-template-columns:1.02fr .98fr;gap:14px;align-items:stretch}
+  .layers-wrap .svgbox{padding:6px}
+  .layers-wrap .svgbox svg{min-width:420px}
+  svg .plate{fill:rgba(13,20,32,.92);stroke:rgba(90,140,160,.32);stroke-width:1;transition:.2s;cursor:pointer}
+  svg .plate:hover{stroke:var(--neon)}
+  svg .plate.on{fill:rgba(62,242,155,.14);stroke:var(--neon);stroke-width:1.5}
+  svg .plate-edge{fill:rgba(62,242,155,.04);stroke:rgba(90,140,160,.28);stroke-width:1;transition:.2s}
+  svg .lyr:hover .plate-edge{fill:rgba(62,242,155,.1);stroke:var(--neon)}
+  svg .lyr.on .plate-edge{fill:rgba(62,242,155,.18);stroke:var(--neon)}
+  svg .tick{stroke:rgba(120,145,160,.5);stroke-width:1}
+  svg .pl-lb{fill:#cfdadf;font-size:10.5px;pointer-events:none;font-family:var(--sans)}
+  svg .pl-sb{fill:#5f7280;font-size:7.8px;pointer-events:none;font-family:var(--mono);letter-spacing:.8px}
+  svg .pl-no{fill:var(--dim);font-size:8.5px;pointer-events:none;font-family:var(--mono);letter-spacing:1px}
+  .on .pl-lb{fill:var(--neon)} .on .pl-sb{fill:rgba(62,242,155,.6)}
+  .echip{display:inline-block;font-size:11.5px;padding:2px 8px;border:1px solid var(--line);background:rgba(11,17,24,.85);margin:3px 4px 0 0;color:#9fb0ba}
+  .echip b{color:#dbe7e2;font-weight:600}
+
+  /* 场景卡 */
+  .scns{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:4px 0 14px}
+  @media (max-width:900px){ .scns{grid-template-columns:1fr} }
+  .scn{border:1px solid var(--line);background:linear-gradient(180deg,var(--panel2),var(--panel));cursor:pointer;transition:.22s;position:relative;overflow:hidden}
+  .scn:hover{border-color:var(--neon-dim);transform:translateY(-2px)}
+  .scn.on{border-color:var(--neon);background:rgba(62,242,155,.05);box-shadow:0 0 24px rgba(62,242,155,.08)}
+  .scn .top{display:flex;align-items:center;gap:8px;padding:12px 15px 0}
+  .scn .sid{font-family:var(--mono);font-size:10px;color:var(--cyan);letter-spacing:1.6px}
+  .scn .top .tag{margin-left:auto;font-family:var(--mono);font-size:9px;letter-spacing:.8px;color:var(--amber);border:1px solid rgba(255,180,84,.35);padding:1px 6px;background:rgba(255,180,84,.07)}
+  .scn h3{font-family:var(--serif);font-size:15px;font-weight:600;color:#e7efe9;margin:8px 15px 0;line-height:1.5}
+  .scn.on h3{color:var(--neon)}
+  .scn .sub{font-family:var(--mono);font-size:9.3px;color:var(--dim);margin:5px 15px 0;letter-spacing:.6px}
+  .scn .ico{padding:6px 12px 10px}
+  .scn .ico svg{display:block;width:100%;height:auto}
+
+  /* 时序 */
+  .phaseline{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--line);background:rgba(11,17,24,.75);margin:6px 0 14px}
+  .ph-node{padding:11px 7px 9px;text-align:center;cursor:pointer;border-right:1px solid var(--line);position:relative;transition:.18s}
+  .ph-node:last-child{border-right:none}
+  .ph-node .pt{font-family:var(--mono);font-size:9.5px;color:var(--dim);letter-spacing:1px}
+  .ph-node .pn{font-size:11.5px;color:#a9b8c0;margin-top:3px;line-height:1.45}
+  .ph-node:hover{background:rgba(62,242,155,.04)}
+  .ph-node.on{background:var(--neon-soft)}
+  .ph-node.on .pt,.ph-node.on .pn{color:var(--neon)}
+  .ph-node::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:transparent}
+  .ph-node.on::after{background:var(--neon);box-shadow:0 0 8px var(--neon-dim)}
+
+  /* ODC 包线 */
+  .odcrow{display:grid;grid-template-columns:168px 1fr 118px;gap:12px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+  .odcrow:last-child{border-bottom:none}
+  .odcrow .lb{display:flex;align-items:baseline;gap:8px}
+  .odcrow .id{font-family:var(--mono);font-size:9.5px;color:var(--cyan);flex:0 0 26px}
+  .odcrow .nm{font-size:12px;color:#a9b8c0}
+  .odcrow .track{position:relative;height:14px;background:rgba(8,13,19,.9);border:1px solid var(--line)}
+  .odcrow .band{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,rgba(62,242,155,.08),rgba(62,242,155,.22));border-left:1px solid rgba(62,242,155,.45);border-right:1px solid rgba(62,242,155,.45)}
+  .odcrow .mk{position:absolute;top:-4px;width:2px;height:20px;background:var(--neon);box-shadow:0 0 8px var(--neon-dim);transition:left .5s ease,background .3s}
+  .odcrow .val{font-family:var(--mono);font-size:10.5px;color:#c3d2d9;text-align:right;letter-spacing:.2px}
+  .odcrow .val .rg{color:var(--dim);font-size:9px}
+  .odcrow .resp{grid-column:2/4;font-size:11.5px;color:var(--alert);line-height:1.65;display:none;padding:1px 0 5px}
+  .odc.bad .odcrow.bad .mk{background:var(--alert);box-shadow:0 0 8px rgba(255,90,90,.6)}
+  .odc.bad .odcrow.bad .val{color:var(--alert)}
+  .odc.bad .odcrow.bad .resp{display:block}
+  .odc.bad .odcrow.bad .nm{color:#d7b7b7}
+
+  /* 风险矩阵 */
+  .rmxwrap{display:grid;grid-template-columns:1fr 330px;gap:16px;align-items:start}
+  @media (max-width:980px){ .rmxwrap{grid-template-columns:1fr} }
+  .rmx{display:grid;grid-template-columns:34px repeat(5,1fr);grid-auto-rows:46px;border:1px solid var(--line);background:rgba(11,17,24,.7)}
+  .rmx .ax{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9.5px;color:#7c909d;letter-spacing:.6px}
+  .rmx .ax.y{writing-mode:horizontal-tb;text-align:right;padding-right:6px;justify-content:flex-end}
+  .rmx .cx{grid-column:1;grid-row:1;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:8px;color:var(--dim);text-align:center;line-height:1.3}
+  .rmx .rc{border-left:1px solid var(--line);border-top:1px solid var(--line);position:relative;cursor:pointer;transition:.18s}
+  .rmx .rc:hover{outline:1px solid var(--neon-dim);outline-offset:-1px}
+  .rmx .rc.on{outline:1px solid var(--neon);outline-offset:-1px;background:rgba(62,242,155,.06)}
+  .rmx .dot{position:absolute;width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:8.5px;color:#070b10;font-weight:700;transform:translate(-50%,-50%);cursor:pointer;transition:.18s;box-shadow:0 0 0 1px rgba(7,11,16,.6)}
+  .rmx .dot:hover{transform:translate(-50%,-50%) scale(1.22);z-index:3}
+  .rmx .dot.hi{background:var(--alert)}
+  .rmx .dot.mid{background:var(--amber)}
+  .rmx .dot.lo{background:var(--neon)}
+  .rmx-legend{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--mono);font-size:9px;color:var(--dim);margin-top:8px;letter-spacing:.6px}
+  .rmx-legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+
+  .risks{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  @media (max-width:900px){ .risks{grid-template-columns:1fr} }
+  .risk{border:1px solid var(--line);background:rgba(13,20,32,.7);padding:11px 13px;cursor:pointer;transition:.18s}
+  .risk:hover{border-color:var(--neon-dim)}
+  .risk.on{border-color:var(--alert);background:rgba(255,90,90,.05)}
+  .risk .rh{display:flex;align-items:center;gap:8px}
+  .risk .rid{font-family:var(--mono);font-size:10px;color:var(--alert);letter-spacing:1px;white-space:nowrap}
+  .risk .rt{font-size:12.5px;color:#dbe7e2;line-height:1.5;flex:1}
+  .risk .rm{margin-left:auto;font-family:var(--mono);font-size:8.5px;letter-spacing:.6px;color:var(--dim)}
+  .risk .rsum{font-size:11.4px;color:#7d919d;margin-top:5px;line-height:1.62;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+  .risk.on .rsum{display:none}
+  .risk .rb{display:none;margin-top:8px;border-top:1px solid var(--line);padding-top:7px}
+  .risk.on .rb{display:block;animation:fadeIn .3s ease}
+  .risk .rb p{font-size:11.5px;color:#93a6b0;line-height:1.7;margin:3px 0}
+  .risk .rb p b{color:#d7e2e6;font-weight:600}
+  .risk .rb .k2{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:1px;display:block;margin-top:5px}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+  .chain{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
+  .ch{border:1px solid var(--line);background:rgba(11,17,24,.8);padding:5px 10px;font-size:11.5px;color:#9fb0ba}
+  .ch.ok{border-color:var(--neon-dim);color:var(--neon);background:var(--neon-soft)}
+  .ch.warn{border-color:rgba(255,180,84,.4);color:var(--amber);background:rgba(255,180,84,.06)}
+  .ch.bad{border-color:rgba(255,90,90,.4);color:var(--alert);background:rgba(255,90,90,.06)}
+  .ch-arrow{color:var(--dim);font-family:var(--mono);font-size:11px}
+
+  /* SVG */
+  .svgbox{border:1px solid var(--line);background:rgba(9,14,20,.85);padding:8px;overflow-x:auto}
+  .svgbox svg{display:block;width:100%;height:auto;min-width:640px}
+  svg .ln{stroke:rgba(120,145,160,.45);stroke-width:1;fill:none}
+  svg .ln.dash{stroke-dasharray:4 4}
+  svg .route{stroke:rgba(62,242,155,.75);stroke-width:1.6;fill:none;stroke-dasharray:6 5}
+  svg .tx{fill:#a9bac3;font-size:10.5px;font-family:var(--sans)}
+  svg .tx.m{fill:#6b808f;font-size:8.6px;font-family:var(--mono);letter-spacing:.5px}
+  svg .tx.a{fill:#ffb454;font-size:8.5px;font-family:var(--mono)}
+  svg .tx.n{fill:#3ef29b;font-size:8.5px;font-family:var(--mono)}
+  svg .fl{fill:rgba(13,20,32,.85);stroke:rgba(90,140,160,.4);stroke-width:1}
+  svg .fl.amber{stroke:rgba(255,180,84,.55)}
+  svg .node{fill:#070b10;stroke:rgba(62,242,155,.9);stroke-width:1.4}
+  svg .ntx{fill:#3ef29b;font-size:9px;font-family:var(--mono)}
+
+  /* 追溯矩阵 */
+  .matrix{width:100%;border-collapse:collapse;font-size:11.5px}
+  .matrix th{font-family:var(--mono);font-size:9px;letter-spacing:1.2px;color:var(--dim);text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);text-transform:uppercase}
+  .matrix td{padding:7px 9px;border-bottom:1px solid var(--line);color:#9fb0ba;vertical-align:top}
+  .matrix tr:last-child td{border-bottom:none}
+  .matrix td:first-child{font-family:var(--mono);color:var(--cyan);white-space:nowrap}
+  .matrix tr:hover td{background:rgba(62,242,155,.04)}
+  .matrix .bold{color:#dbe7e2}
+
+  .cov{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:14px}
+  .cov .cvi{border:1px solid var(--line);background:rgba(13,20,32,.7);padding:9px 10px}
+  .cov .cvh{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+  .cov .cl{font-family:var(--mono);font-size:9.5px;color:var(--cyan);letter-spacing:1px}
+  .cov .cn{font-family:var(--mono);font-size:9.5px;color:#8fa1ab}
+  .cov .ct{font-size:11px;color:#a9b8c0;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cov .cbar{height:5px;background:rgba(8,13,19,.9);border:1px solid var(--line);margin-top:6px;position:relative}
+  .cov .cfill{position:absolute;left:0;top:0;bottom:0;background:var(--neon);opacity:.65}
+  .cov .cvi.gap .cfill{background:var(--amber)}
+  @media (max-width:980px){ .cov{grid-template-columns:repeat(3,1fr)} }
+  .tag-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .tag{font-family:var(--mono);font-size:9.5px;letter-spacing:1px;padding:4px 11px;border:1px solid var(--line);background:rgba(13,20,32,.7);color:var(--muted)}
+  .tag::before{content:"▸ ";color:var(--neon)}
+
+  footer{padding:40px 0 56px;color:var(--muted);font-size:12.5px;position:relative;z-index:1}
+  footer .rule{height:1px;background:var(--line);margin-bottom:22px;position:relative}
+  footer .rule::after{content:"";position:absolute;right:0;top:-3px;width:7px;height:7px;background:var(--neon);animation:pulse 2s infinite}
+  footer .foot-links a{color:var(--neon);text-decoration:none;margin-right:20px;font-family:var(--mono);font-size:12px;letter-spacing:1px}
+  footer .foot-links a:hover{text-shadow:0 0 8px var(--neon-dim)}
+  footer .kbdhint{margin-top:12px;font-family:var(--mono);font-size:10px;letter-spacing:1.4px;color:var(--dim)}
+  footer .kbdhint b{color:var(--muted);border:1px solid var(--line);padding:1px 6px;margin:0 3px}
+  .top-btn{position:fixed;right:24px;bottom:24px;width:42px;height:42px;background:var(--panel2);color:var(--neon);border:1px solid var(--neon-dim);font-family:var(--mono);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;z-index:110}
+  .top-btn.show{opacity:1;pointer-events:auto}
+  .top-btn:hover{background:var(--neon-soft);box-shadow:0 0 16px var(--neon-dim)}
+
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  @media (max-width:980px){
+    .hero{grid-template-columns:1fr;gap:26px}
+    .hero h1{font-size:27px}
+    .stack{display:grid;grid-template-columns:1fr 1fr}
+    .stk{border-right:1px solid var(--line)}
+    .lv-num{font-size:38px}
+    .step .name{font-size:9.5px}
+    nav .links{display:none}
+    .layers-wrap{grid-template-columns:1fr}
+    .phaseline{grid-template-columns:repeat(4,1fr)}
+    .odcrow{grid-template-columns:120px 1fr 88px}
+    .rmx{grid-auto-rows:40px}
+  }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L7,4 L0,8 z" fill="rgba(150,175,190,.7)"/></marker>
+  <marker id="ar-n" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L7,4 L0,8 z" fill="rgba(62,242,155,.8)"/></marker>
+  <marker id="ar-a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L7,4 L0,8 z" fill="rgba(255,180,84,.85)"/></marker>
+</defs></svg>
+
+<div class="ticker"><div class="tk">
+  <b>SCENARIO-BASED SE</b> · LAYERS <b>06</b> · ELEMENTS <b>39</b> · INSTANCES <b>03</b> · ODC PARAMS <b>10 + 9</b> · RISK SCENARIOS <b>08</b> · DUE 2026.12.03 12:00 · <i>SCENARIO → LAYER → ODC → RISK</i> · <b>SCENARIO-BASED SE</b> · LAYERS <b>06</b> · ELEMENTS <b>39</b> · INSTANCES <b>03</b> · ODC PARAMS <b>10 + 9</b> · RISK SCENARIOS <b>08</b> · DUE 2026.12.03 12:00 · <i>SCENARIO → LAYER → ODC → RISK</i> ·
+</div></div>
+
+<nav>
+  <div class="wrap">
+    <div class="brand">
+      <span class="dot"></span>
+      <a href="index.html" style="text-decoration:none;color:inherit"><span class="zh">轮腿式无人作战平台</span></a>
+      <span class="en">Scenario Definition</span>
+    </div>
+    <div class="links">
+      <a href="assignment3.html">← 作业3</a>
+      <a href="#s1">分层</a>
+      <a href="#s2">实例</a>
+      <a href="#s3">典型场景</a>
+      <a href="#s4">ODC</a>
+      <a href="#s5">风险</a>
+      <a href="#s6">牵引</a>
+    </div>
+  </div>
+</nav>
+
+<header>
+  <div class="halo"></div>
+  <div class="wrap hero">
+    <div>
+      <div class="kicker">Complex Systems Engineering · Assignment 04</div>
+      <h1>场景分层<br><em>与运行设计条件</em></h1>
+      <div class="chain"><b>环境</b> → 六层要素 <i>取值</i> → 三个实例 <i>具体场景</i> → ODC → <i>风险场景</i></div>
+      <p class="lede">上一阶段把相关方的要求翻成了需求，这一阶段回头看环境本身。把平台所处的战场拆成六层，逐层列要素、定取值；再把它们组合成三个带明确参数的运行实例，其中一个展开到分钟级。最后用运行设计条件圈出「正常跑得起来」的范围，拿典型场景做一遍安全风险分析，得到风险场景列表。</p>
+    </div>
+    <div class="stack">
+      <div class="stk"><div class="n">STEP 01</div><div class="t">场景分层<i>六层 + 39 个要素</i></div></div>
+      <div class="stk c"><div class="n">STEP 02</div><div class="t">三个场景实例<i>带参数的具体场景</i></div></div>
+      <div class="stk a"><div class="n">STEP 03</div><div class="t">运行设计条件<i>ODD / 系统 / 人员</i></div></div>
+      <div class="stk v"><div class="n">STEP 04</div><div class="t">安全风险分析<i>8 个风险场景</i></div></div>
+    </div>
+  </div>
+</header>
+
+<div class="stepper-bar">
+  <div class="wrap" style="padding:0">
+  <div class="stepper">
+    <div class="step" data-target="s1"><div class="no">01</div><div class="name">分层</div></div>
+    <div class="step" data-target="s2"><div class="no">02</div><div class="name">实例</div></div>
+    <div class="step" data-target="s3"><div class="no">03</div><div class="name">典型场景</div></div>
+    <div class="step" data-target="s4"><div class="no">04</div><div class="name">ODC</div></div>
+    <div class="step" data-target="s5"><div class="no">05</div><div class="name">风险</div></div>
+    <div class="step" data-target="s6"><div class="no">06</div><div class="name">牵引</div></div>
+  </div>
+  </div>
+</div>
+
+<!-- ============ 01 场景分层 ============ -->
+<section class="level" id="s1">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">01</div>
+      <div>
+        <div class="lv-tag" style="color:var(--neon)">场景分层 / SCENARIO LAYERS</div>
+        <h2>把战场拆成六层，逐层列要素</h2>
+        <div class="en">Functional → Logical → Concrete · 6 Layers · 39 Elements</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">场景是平台在时空范围内与环境各要素交互的过程。同一个环境，写需求时用<b>功能场景</b>（自然语言、不带数值），做分析时用<b>逻辑场景</b>（参数取范围），落到一次具体运行就是<b>具体场景</b>（参数取定值）。分层是中间那一步：把混在一起的环境拆成互不重叠的六层，每层能独立枚举、独立取值、独立组合，才谈得上覆盖率和复用。</p>
+
+    <div class="grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:6px">
+      <div class="cell c reveal"><div class="idx">LEVEL 1 · FUNCTIONAL</div><h3>功能场景</h3><p>「夜间在城镇建筑内搜索」——只描述行为与环境的类别，不含数值，用于早期需求讨论与场景来源梳理。</p></div>
+      <div class="cell reveal"><div class="idx">LEVEL 2 · LOGICAL</div><h3>逻辑场景</h3><p>「楼梯坡度 20°–30°、能见度 50–200 m、GNSS 拒止 0–30 min」——参数取范围，用于组合、泛化与测试空间划分。</p></div>
+      <div class="cell a reveal"><div class="idx">LEVEL 3 · CONCRETE</div><h3>具体场景</h3><p>「28° 楼梯、能见度 80 m、拒止 26 min、04:20 进入」——参数取定值，用于复现、验证与风险分析。02 节的三个实例都属于这一级。</p></div>
+    </div>
+
+    <h3 class="sec-sub"><span>01.1</span>六层模型与要素清单</h3>
+    <p class="lv-desc" style="margin:0 0 10px">点选左侧任意一层，右侧给出该层的要素、典型取值与对系统的影响。层与层之间尽量解耦：地形只管几何，电磁只管链路，人员只管在场与授权，这样组合时不会互相污染。</p>
+
+    <div class="layers-wrap reveal">
+      <div class="svgbox">
+        <svg viewBox="0 0 640 400" id="layerSvg" xmlns="http://www.w3.org/2000/svg">
+          <text x="26" y="24" class="tx m">SCENARIO LAYERS · 6</text>
+          <text x="26" y="40" class="tx m">CLICK A LAYER TO INSPECT</text>
+          <g class="lyr" data-layer="L6">
+            <polygon class="plate" points="56,70 300,70 380,100 136,100"/>
+            <polygon class="plate-edge" points="56,70 136,100 136,112 56,82"/>
+            <line x1="380" y1="85" x2="394" y2="85" class="tick"/>
+            <text x="402" y="83" class="pl-lb">L6 电磁与网联</text>
+            <text x="402" y="97" class="pl-sb">EM / CONNECTIVITY · 7</text>
+          </g>
+          <g class="lyr" data-layer="L5">
+            <polygon class="plate" points="56,122 300,122 380,152 136,152"/>
+            <polygon class="plate-edge" points="56,122 136,152 136,164 56,134"/>
+            <line x1="380" y1="137" x2="394" y2="137" class="tick"/>
+            <text x="402" y="135" class="pl-lb">L5 气象与光照</text>
+            <text x="402" y="149" class="pl-sb">WEATHER / LIGHT · 7</text>
+          </g>
+          <g class="lyr" data-layer="L4">
+            <polygon class="plate" points="56,174 300,174 380,204 136,204"/>
+            <polygon class="plate-edge" points="56,174 136,204 136,216 56,186"/>
+            <line x1="380" y1="189" x2="394" y2="189" class="tick"/>
+            <text x="402" y="187" class="pl-lb">L4 任务参与者</text>
+            <text x="402" y="201" class="pl-sb">ACTORS · 6</text>
+          </g>
+          <g class="lyr" data-layer="L3">
+            <polygon class="plate" points="56,226 300,226 380,256 136,256"/>
+            <polygon class="plate-edge" points="56,226 136,256 136,268 56,238"/>
+            <line x1="380" y1="241" x2="394" y2="241" class="tick"/>
+            <text x="402" y="239" class="pl-lb">L3 临时变更</text>
+            <text x="402" y="253" class="pl-sb">TEMPORARY CHANGE · 6</text>
+          </g>
+          <g class="lyr" data-layer="L2">
+            <polygon class="plate" points="56,278 300,278 380,308 136,308"/>
+            <polygon class="plate-edge" points="56,278 136,308 136,320 56,290"/>
+            <line x1="380" y1="293" x2="394" y2="293" class="tick"/>
+            <text x="402" y="291" class="pl-lb">L2 静态标识与先验</text>
+            <text x="402" y="305" class="pl-sb">REFERENCE / PRIOR · 6</text>
+          </g>
+          <g class="lyr" data-layer="L1">
+            <polygon class="plate" points="56,330 300,330 380,360 136,360"/>
+            <polygon class="plate-edge" points="56,330 136,360 136,372 56,342"/>
+            <line x1="380" y1="345" x2="394" y2="345" class="tick"/>
+            <text x="402" y="343" class="pl-lb">L1 地形与空间拓扑</text>
+            <text x="402" y="357" class="pl-sb">TERRAIN / TOPOLOGY · 7</text>
+          </g>
+          <line x1="56" y1="360" x2="380" y2="360" class="ln"/>
+          <text x="56" y="378" class="tx m">GROUND · 系统边界之内</text>
+        </svg>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="pid" id="lyId">L6</div><h3 id="lyName">电磁与网联</h3><div class="tag" id="lyCnt">7 ELEMENTS</div></div>
+        <div class="kv" id="lyKv"></div>
+        <div style="margin-top:10px" id="lyChips"></div>
+        <div style="margin-top:10px;border-top:1px dashed var(--line);padding-top:8px">
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.4px;color:var(--dim);margin-bottom:4px">FAULT IN THIS LAYER</div>
+          <div style="font-size:12px;color:#b9c7ce;line-height:1.75" id="lyFault"></div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="sec-sub"><span>01.2</span>为什么用这六层</h3>
+    <div class="grid">
+      <div class="cell reveal"><div class="idx">可分</div><h3>层间独立</h3><p>地形、气象、电磁各自取值，不互相绑定。评估通过性时不必同时考虑干扰强度，做链路预算时也不必重新定义坡度。</p></div>
+      <div class="cell c reveal"><div class="idx">可枚举</div><h3>要素有边界</h3><p>每层收敛到 6–7 个要素，共 39 个。每个要素给出取值范围或离散档位，组合数可控，能被场景库直接引用。</p></div>
+      <div class="cell a reveal"><div class="idx">可追溯</div><h3>要素挂到需求</h3><p>每个要素指明它压到哪条性能需求上：越障几何对 PR-05、GNSS 对 PR-03、链路对 PR-09。改场景就能反查受影响的需求与验证项。</p></div>
+    </div>
+
+    <div class="tag-row">
+      <span class="tag">功能定义：场景界定功能边界</span><span class="tag">系统分析：场景决定指标取值</span><span class="tag">安全分析：场景提供危险触发</span>
+      <span class="tag">系统实现：场景驱动算法取舍</span><span class="tag">测试验证：场景构成用例</span><span class="tag">运行维护：场景监测触发降级</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 02 三个场景实例 ============ -->
+<section class="level" id="s2" style="background:rgba(11,17,24,.5)">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">02</div>
+      <div>
+        <div class="lv-tag" style="color:var(--cyan)">场景实例 / INSTANCES</div>
+        <h2>三个具体场景，参数取定值</h2>
+        <div class="en">S-01 Urban Breach · S-02 Ridge Recon · S-03 Night Resupply</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">三个实例按任务类型分开：城镇进入、山地侦察、夜间保障。每个都给到具体的时间、地点、六层取值和关键事件，能直接拿去复现或做测试用例。S-01 的参数最全、扰动最密，作为典型场景在 03 节展开。</p>
+
+    <div class="scns reveal" id="scnRow"></div>
+
+    <div class="panel" id="scnPanel">
+      <div class="ph"><div class="pid" id="spId">S-01</div><h3 id="spName"></h3><div class="tag" id="spTag"></div></div>
+      <div id="spHead" style="font-size:12.5px;color:#9fb0ba;line-height:1.75;margin-bottom:10px"></div>
+      <div class="duo" style="grid-template-columns:1.25fr .75fr;margin-top:0">
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.4px;color:var(--dim);margin-bottom:2px">SIX-LAYER VALUES</div>
+          <div class="kv" id="spVals"></div>
+        </div>
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.4px;color:var(--dim);margin-bottom:4px">KEY EVENTS</div>
+          <div id="spKeys" style="font-size:12px;color:#9fb0ba;line-height:1.75"></div>
+          <div style="margin-top:10px;border-top:1px dashed var(--line);padding-top:8px">
+            <div style="font-family:var(--mono);font-size:9px;letter-spacing:1.4px;color:var(--dim);margin-bottom:3px">RELATED REQUIREMENTS</div>
+            <div style="font-family:var(--mono);font-size:10.5px;color:var(--cyan);line-height:1.9" id="spReq"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 03 典型场景 ============ -->
+<section class="level" id="s3">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">03</div>
+      <div>
+        <div class="lv-tag" style="color:var(--amber)">典型场景 / REFERENCE SCENARIO</div>
+        <h2>S-01 城镇多层建筑逐屋清剿</h2>
+        <div class="en">04:12 – 05:10 · 600 m · 3 Floors · GNSS Denied 26 min</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">选它做典型，是因为六层在同一小时里同时施压：几何最碎（楼梯、门槛、台阶差）、定位最差（室内拒止）、链路最弱（混凝土遮挡）、人员最近（楼外步兵、楼内平民）、时间最紧（40 min 内完成）。风险不在单点，而在这些条件叠加时的判断。</p>
+
+    <h3 class="sec-sub"><span>03.1</span>场景剖面</h3>
+    <div class="svgbox reveal">
+      <svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg">
+        <text x="40" y="30" class="tx m">VERTICAL SECTION · S-01 · 1:100</text>
+        <text x="40" y="46" class="tx n">— — 进入路径</text>
+        <text x="150" y="46" class="tx a">— — 搜索 / 撤出</text>
+
+        <!-- 地面与建筑 -->
+        <line x1="40" y1="342" x2="860" y2="342" class="ln"/>
+        <text x="40" y="362" class="tx m">STREET</text>
+        <rect x="250" y="96" width="450" height="246" class="fl"/>
+        <line x1="250" y1="178" x2="700" y2="178" class="ln"/>
+        <line x1="250" y1="260" x2="700" y2="260" class="ln"/>
+        <text x="300" y="130" class="tx m">F3 · 三层</text>
+        <text x="300" y="212" class="tx m">F2 · 二层</text>
+        <text x="300" y="290" class="tx m">F1 · 一层</text>
+
+        <!-- 楼梯（两跑） -->
+        <path d="M610,342 h15 v-13.5 h15 v-13.5 h15 v-13.5 h15 v-13.5 h15 v-13.5 h15 v-13.5" class="ln"/>
+        <path d="M610,261 h15 v-13.5 h15 v-13.5 h15 v-13.5 h15 v-13.5 h15 v-13.5 h15 v-13.5" class="ln"/>
+        <text x="712" y="292" class="tx a">楼梯 28°</text>
+        <text x="712" y="306" class="tx m">踏步 160 mm</text>
+
+        <!-- 门洞 -->
+        <rect x="250" y="300" width="26" height="42" fill="rgba(62,242,155,.1)" stroke="rgba(62,242,155,.55)"/>
+        <line x1="238" y1="318" x2="252" y2="318" class="ln dash"/>
+        <text x="150" y="318" class="tx a">门洞 0.9 m</text>
+
+        <!-- 二层台阶差 -->
+        <rect x="332" y="252" width="58" height="8" fill="rgba(255,180,84,.18)" stroke="rgba(255,180,84,.55)"/>
+        <text x="332" y="246" class="tx a">台阶差 0.35 m</text>
+
+        <!-- 坍塌区 -->
+        <path d="M470,260 L520,260 L500,290 L470,300 Z" fill="rgba(255,90,90,.09)" stroke="rgba(255,90,90,.45)"/>
+        <text x="462" y="316" class="tx" style="fill:#c98a8a">楼板坍塌 · 禁入</text>
+
+        <!-- 观察窗 -->
+        <rect x="556" y="110" width="54" height="46" fill="rgba(79,216,255,.08)" stroke="rgba(79,216,255,.5)"/>
+        <line x1="556" y1="92" x2="556" y2="110" class="ln dash"/>
+        <text x="470" y="86" class="tx m">观察窗 · 目标 480 m</text>
+
+        <!-- 人员 -->
+        <text x="430" y="232" class="tx m">平民 ×1</text>
+        <text x="430" y="150" class="tx m">敌方 ×2</text>
+        <text x="60" y="286" class="tx m">己方步兵 ×2 · 楼外 15 m</text>
+        <line x1="60" y1="308" x2="60" y2="336" class="ln dash"/>
+
+        <!-- 路线：街面 → 一层 → 楼梯 -->
+        <path class="route" d="M96,342 L246,342 L258,332 L604,332" marker-end="url(#ar-n)"/>
+        <path class="route" d="M604,332 L700,180" marker-end="url(#ar-n)"/>
+        <path class="route" d="M694,170 L574,150" marker-end="url(#ar-n)"/>
+        <!-- 二层搜索 -->
+        <path d="M690,250 L484,250" stroke="rgba(255,180,84,.7)" stroke-width="1.4" fill="none" stroke-dasharray="5 4" marker-end="url(#ar-a)"/>
+        <!-- 撤出节点 -->
+
+        <!-- 节点 -->
+        <g><circle cx="96" cy="342" r="6.5" class="node"/><text x="78" y="332" class="ntx">T0</text></g>
+        <g><circle cx="215" cy="342" r="6.5" class="node"/><text x="203" y="366" class="ntx">T1</text></g>
+        <g><circle cx="285" cy="332" r="6.5" class="node"/><text x="276" y="320" class="ntx">T2</text></g>
+        <g><circle cx="600" cy="332" r="6.5" class="node"/><text x="588" y="320" class="ntx">T3</text></g>
+        <g><circle cx="470" cy="250" r="6.5" class="node"/><text x="456" y="240" class="ntx">T4</text></g>
+        <g><circle cx="556" cy="150" r="6.5" class="node"/><text x="540" y="140" class="ntx">T5</text></g>
+        <g><circle cx="330" cy="342" r="6.5" stroke="rgba(255,180,84,.9)"/><text x="344" y="326" class="ntx" style="fill:#ffb454">T6 撤出</text></g>
+
+        <!-- 比例尺 -->
+        <line x1="760" y1="392" x2="860" y2="392" class="ln"/>
+        <line x1="760" y1="388" x2="760" y2="396" class="ln"/>
+        <line x1="860" y1="388" x2="860" y2="396" class="ln"/>
+        <text x="760" y="384" class="tx m">10 m</text>
+      </svg>
+    </div>
+
+    <h3 class="sec-sub"><span>03.2</span>时序与状态</h3>
+    <div class="phaseline" id="phaseLine"></div>
+    <div class="panel">
+      <div class="ph"><div class="pid" id="phId">T1 · 04:20</div><h3 id="phName"></h3><div class="tag" id="phMode"></div></div>
+      <div class="duo" style="grid-template-columns:1fr 1fr 1fr;margin-top:0;gap:18px">
+        <div><div class="k2" style="font-family:var(--mono);font-size:9px;letter-spacing:1.3px;color:var(--dim)">平台动作 / PLATFORM</div><div id="phAct" style="font-size:12.2px;color:#9fb0ba;line-height:1.75;margin-top:3px"></div></div>
+        <div><div style="font-family:var(--mono);font-size:9px;letter-spacing:1.3px;color:var(--dim)">人员与环境 / CREW &amp; ENV</div><div id="phEnv" style="font-size:12.2px;color:#9fb0ba;line-height:1.75;margin-top:3px"></div></div>
+        <div><div style="font-family:var(--mono);font-size:9px;letter-spacing:1.3px;color:var(--dim)">风险触发 / RISK</div><div id="phRisk" style="font-size:12.2px;color:#c9a3a3;line-height:1.75;margin-top:3px"></div></div>
+      </div>
+    </div>
+
+    <h3 class="sec-sub"><span>03.3</span>为什么选它做典型</h3>
+    <div class="grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="cell a reveal"><div class="idx">L1 + L3</div><h3>几何最碎</h3><p>门槛、楼梯、台阶差、坍塌区在同一路径上，几何先验连续失效，越障能力被逐段检验。</p></div>
+      <div class="cell c reveal"><div class="idx">L2 + L6</div><h3>定位与链路同时弱</h3><p>室内拒止 26 min，漂移 1.2%；楼内链路断到 45 s。两者叠加时，按位置做的围栏判定不成立。</p></div>
+      <div class="cell reveal"><div class="idx">L4</div><h3>人最近</h3><p>楼外 15 m 有己方步兵，楼内有平民，射击窗口在居民区方向。识别错误的代价最高。</p></div>
+      <div class="cell v reveal"><div class="idx">TIME</div><h3>时间压力</h3><p>40 min 内完成三层搜索并指示目标，平均每层可用不到 12 min，操作员没有反复确认的余量。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 04 ODC ============ -->
+<section class="level" id="s4" style="background:rgba(11,17,24,.5)">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">04</div>
+      <div>
+        <div class="lv-tag" style="color:var(--violet)">运行设计条件 / ODC</div>
+        <h2>正常跑得起来的条件边界</h2>
+        <div class="en">Operational Design Domain · System State · Crew State</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">运行设计条件不是一句「适应复杂环境」，而是三组可判定条件的合集：<b>运行设计范围</b>管外部环境，<b>系统状态</b>管平台自己，<b>人员状态</b>管人。三组都成立才叫正常运行；任一组不成立，平台必须按既定路径降级，而不是继续按原指令执行。</p>
+
+    <h3 class="sec-sub"><span>04.1</span>运行设计范围 · 外部环境包线</h3>
+    <div class="panel odc" id="odcPanel">
+      <div class="ph"><div class="pid">ODD</div><h3>10 项环境参数</h3>
+        <div class="tag"><button class="fbtn" id="odcBtn" style="margin:0">演示越界 →</button></div>
+      </div>
+      <div id="odcRows"></div>
+      <div class="note" style="border-left:2px solid var(--amber);background:rgba(255,180,84,.05);padding:8px 12px;margin-top:12px;font-size:11.8px;color:#b9a98d">
+        绿色区间为包线，竖线为 S-01 的实际取值。<b style="color:var(--amber)">演示越界</b>后，超出包线的参数标红，并给出该参数对应的降级动作。
+      </div>
+    </div>
+
+    <div class="duo" style="grid-template-columns:1fr 1fr">
+      <div class="panel">
+        <div class="ph"><div class="pid">SYS</div><h3>系统状态</h3><div class="tag">5 项</div></div>
+        <div class="kv" id="sysKv"></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="pid">CREW</div><h3>人员状态</h3><div class="tag">4 项</div></div>
+        <div class="kv" id="crewKv"></div>
+      </div>
+    </div>
+
+    <h3 class="sec-sub"><span>04.2</span>越界处置链</h3>
+    <div class="chain">
+      <span class="ch">监测：50 ms 周期校验包线</span><span class="ch-arrow">→</span>
+      <span class="ch warn">降级：限速 / 退出腿行 / 切换中继</span><span class="ch-arrow">→</span>
+      <span class="ch warn">请求接管：≤3 s 内向操作员告警</span><span class="ch-arrow">→</span>
+      <span class="ch bad">安全状态：60 s 内降速停车或返航，保险上锁</span>
+    </div>
+    <p style="font-size:11.5px;color:var(--dim);margin-top:8px;font-family:var(--mono)">对应 SAF-02 独立安全监控 · SAF-05 失联安全状态 · SAF-06 地理围栏 · SAF-07 姿态包线</p>
+  </div>
+</section>
+
+<!-- ============ 05 安全风险分析 ============ -->
+<section class="level" id="s5">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">05</div>
+      <div>
+        <div class="lv-tag" style="color:var(--alert)">安全风险分析 / RISK</div>
+        <h2>从场景要素扰动到风险场景</h2>
+        <div class="en">Trigger → Hazard → Risk Scenario · 8 Scenarios</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">做法很直接：把 S-01 的六层取值逐项扰动一次，看哪个要素一旦偏离就会引出危险，再把危险放到具体时空里写成风险场景。严重度按后果定，可能性按该扰动在场景中出现的频次定，两者相乘得到等级。点矩阵格子可以筛出落在该格的风险，再点一次取消。</p>
+
+    <div class="rmxwrap">
+      <div>
+        <div class="svgbox" style="padding:10px">
+          <div class="rmx" id="rmx"></div>
+        </div>
+        <div class="rmx-legend">
+          <span><i style="background:var(--alert)"></i>高 ≥12</span>
+          <span><i style="background:var(--amber)"></i>中 6–11</span>
+          <span><i style="background:var(--neon)"></i>低 ≤5</span>
+          <span>横轴：严重度 S 1–5 · 纵轴：可能性 P 1–5</span>
+        </div>
+      </div>
+      <div class="panel" style="margin:0">
+        <div class="ph"><div class="pid">SCENARIO SET</div><h3>风险场景列表</h3><div class="tag" id="rCount">8</div></div>
+        <div style="font-size:11.8px;color:var(--muted);line-height:1.7;margin-bottom:8px">点卡片展开触发条件、后果与控制措施。红框为当前选中。</div>
+        <div id="riskMini" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+    </div>
+
+    <h3 class="sec-sub"><span>05.1</span>风险场景详表</h3>
+    <div class="risks" id="riskList"></div>
+    <p style="font-size:11.5px;color:var(--dim);margin-top:10px">等级 = 严重度 × 可能性。<b style="color:var(--amber)">需补</b>一栏指向当前设计里还缺的控制或需求，进入下一轮需求迭代。</p>
+  </div>
+</section>
+
+<!-- ============ 06 牵引 ============ -->
+<section class="level" id="s6" style="background:rgba(11,17,24,.5)">
+  <div class="wrap">
+    <div class="lv-head reveal">
+      <div class="lv-num">06</div>
+      <div>
+        <div class="lv-tag" style="color:var(--neon)">场景牵引 / TRACE</div>
+        <h2>场景 → 风险 → 需求 → 验证</h2>
+        <div class="en">Scenario Driven Requirements · Coverage Gaps</div>
+      </div>
+    </div>
+    <p class="lv-desc reveal">场景工作的价值在于闭环：每个风险场景都要能追到一条需求和一种验证方式。追不到的地方就是缺口，要么补需求，要么补场景。</p>
+
+    <div class="svgbox" style="padding:0;border:none;background:none">
+      <table class="matrix" id="traceTbl"></table>
+    </div>
+
+    <h3 class="sec-sub"><span>06.1</span>覆盖情况与缺口</h3>
+    <div class="duo" style="grid-template-columns:1.2fr .8fr">
+      <div class="panel">
+        <div class="ph"><div class="pid">COVERAGE</div><h3>六层 39 个要素的覆盖</h3></div>
+        <div class="kv">
+          <div class="row"><div class="kk">已覆盖</div><div class="vv"><b>32 / 39</b>　三个实例合计覆盖六层要素的 82%，其中 L1、L4、L5 覆盖最全。</div></div>
+          <div class="row"><div class="kk">未覆盖</div><div class="vv">地下空间与管廊、积雪深度、风速上限、GNSS 欺骗（区别于压制）、8 台以上协同、俘虏与受困人员、动物闯入。</div></div>
+          <div class="row"><div class="kk">原因</div><div class="vv">三个实例都围绕「进入并指示」这一类任务，任务谱系偏窄；保障类只做了前送，没做抢修与后送。</div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="pid">NEXT</div><h3>下一轮要补的</h3></div>
+        <div style="font-size:12.2px;color:#9fb0ba;line-height:1.85">
+          <div style="padding:5px 0;border-bottom:1px solid var(--line)"><b style="color:var(--cyan)">场景库</b>　把三个实例泛化成 12 条逻辑场景，参数取范围，供组合与抽样。</div>
+          <div style="padding:5px 0;border-bottom:1px solid var(--line)"><b style="color:var(--cyan)">测试用例</b>　每个高风险场景至少一条具体用例，落到试验大纲。</div>
+          <div style="padding:5px 0"><b style="color:var(--cyan)">需求回写</b>　R-02、R-03、R-06 需要补控制策略，回写为 FR / SAF 条目。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cov">
+      <div class="cvi"><div class="cvh"><span class="cl">L1</span><span class="cn">6/7</span></div><div class="ct">地形与空间拓扑</div><div class="cbar"><div class="cfill" style="width:86%"></div></div></div>
+      <div class="cvi"><div class="cvh"><span class="cl">L2</span><span class="cn">6/6</span></div><div class="ct">静态标识与先验</div><div class="cbar"><div class="cfill" style="width:100%"></div></div></div>
+      <div class="cvi"><div class="cvh"><span class="cl">L3</span><span class="cn">6/6</span></div><div class="ct">临时变更</div><div class="cbar"><div class="cfill" style="width:100%"></div></div></div>
+      <div class="cvi gap"><div class="cvh"><span class="cl">L4</span><span class="cn">4/6</span></div><div class="ct">任务参与者</div><div class="cbar"><div class="cfill" style="width:67%"></div></div></div>
+      <div class="cvi gap"><div class="cvh"><span class="cl">L5</span><span class="cn">5/7</span></div><div class="ct">气象与光照</div><div class="cbar"><div class="cfill" style="width:71%"></div></div></div>
+      <div class="cvi gap"><div class="cvh"><span class="cl">L6</span><span class="cn">5/7</span></div><div class="ct">电磁与网联</div><div class="cbar"><div class="cfill" style="width:71%"></div></div></div>
+    </div>
+
+    <div class="tag-row">
+      <span class="tag">L1 地形与空间拓扑</span><span class="tag">L2 静态标识与先验</span><span class="tag">L3 临时变更</span>
+      <span class="tag">L4 任务参与者</span><span class="tag">L5 气象与光照</span><span class="tag">L6 电磁与网联</span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="rule"></div>
+    <div class="foot-links">
+      <a href="index.html">← 返回归档</a>
+      <a href="assignment3.html">← 作业3 需求与架构</a>
+    </div>
+    <div class="kbdhint"><b>J</b>/<b>↓</b> 下一节 · <b>K</b>/<b>↑</b> 上一节</div>
+    <div style="margin-top:10px;font-family:var(--mono);font-size:10px;letter-spacing:1.4px;color:var(--dim)">COMPLEX SYSTEMS ENGINEERING 2026 · ASSIGNMENT 04 · SCENARIO LAYERS / ODC / RISK</div>
+  </div>
+</footer>
+
+<button class="top-btn" id="topBtn">↑</button>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const el = (tag, cls, html) => { const d=document.createElement(tag); if(cls) d.className=cls; if(html!=null) d.innerHTML=html; return d; };
+const kvRow = (k,v) => `<div class="row"><div class="kk">${k}</div><div class="vv">${v}</div></div>`;
+
+/* ============ 数据：六层 ============ */
+const LAYERS = {
+  L1:{n:'地形与空间拓扑', en:'TERRAIN / TOPOLOGY', cnt:7, els:[
+    ['地形类型','硬质路面 / 土路 / 碎石 / 松软土 / 废墟 / 楼梯'],
+    ['纵坡','0° – 30°（S-01 室内 0°，室外 6°）'],
+    ['垂直台阶','≤ 0.40 m（S-01 走廊 0.35 m）'],
+    ['壕沟宽度','≤ 0.60 m'],
+    ['通道净宽','≥ 0.80 m（门洞 0.90 m）'],
+    ['室内层高','≥ 2.40 m（S-01 为 3.00 m）'],
+    ['可通行面','楼板承载、踏步完整、地面附着系数 ≥ 0.45']
+  ], req:'PR-04 速度 · PR-05 越障几何 · PR-06 切换时间 · FR-07 / FR-08 轮腿控制',
+    fault:'踏步缺失、楼板塌陷、门框变形——地图与图纸上的几何先验在这里连续失效，越障判断只能靠实时感知。'},
+  L2:{n:'静态标识与先验', en:'REFERENCE / PRIOR', cnt:6, els:[
+    ['地图与图纸','高精地图 / 建筑平面图，精度 0.5–5 m'],
+    ['GNSS 可见性','天空视野角 ≥ 30°；室内视为不可用'],
+    ['已知障碍','雷场标记、固定路障、承重墙位置'],
+    ['禁区与围栏','禁射区、禁入区、授权区边界'],
+    ['标识物','楼号、门牌、楼层标识、地面标线'],
+    ['初始位姿','进入点坐标与朝向，误差 ≤ 0.3 m（RTK）']
+  ], req:'PR-03 定位精度 · FR-02 定位建图 · SAF-06 地理围栏',
+    fault:'图纸与现地不符、楼号被毁、GNSS 在楼间产生多路径——先验越不可信，越依赖人工确认与保守膨胀。'},
+  L3:{n:'临时变更', en:'TEMPORARY CHANGE', cnt:6, els:[
+    ['路障与封控','临时路障、铁丝网、检查站'],
+    ['破坏与坍塌','瓦砾堆、塌陷楼板、断墙'],
+    ['遮蔽物','烟幕、扬尘、燃烧产生的浓烟'],
+    ['临时管制','临时禁入、灯光管制、射击扇区调整'],
+    ['己方临时设施','临时阵地、补给点、救护点'],
+    ['废弃装备','车辆残骸、丢弃的器材']
+  ], req:'FR-05 在线重规划 · PR-05 通过性 · 感知置信度门限',
+    fault:'通道被半封、楼梯堆满杂物、烟幕遮住入口——这类变化不进地图，只能靠在线感知与临时绕行。'},
+  L4:{n:'任务参与者', en:'ACTORS', cnt:6, els:[
+    ['己方步兵','位置共享，距平台 ≥ 5 m'],
+    ['己方车辆与无人机','编队位置、任务分工、中继可用性'],
+    ['敌方人员','距离、姿态、是否已识别'],
+    ['平民与非战斗员','在场人数、位置、是否清场'],
+    ['俘虏与受困人员','需移交或救护，不得作为目标'],
+    ['动物','军犬、牲畜，可能触发误检']
+  ], req:'FR-01 目标检测 · PR-01 检测准确率 · SAF-03 授权互锁 · SAF-04 目标确认链',
+    fault:'平民从窗口出现、己方人员进入射界、动物触发虚警——识别与授权的每一环都被压缩到几秒内。'},
+  L5:{n:'气象与光照', en:'WEATHER / LIGHT', cnt:7, els:[
+    ['昼夜与光照','昼间 / 微光 / 夜间；逆光与强反光'],
+    ['能见度','≥ 50 m（S-01 烟尘下 80 m）'],
+    ['降雨','≤ 10 mm/h'],
+    ['雪与雾','积雪深度 ≤ 0.20 m；雾能见度 ≥ 50 m'],
+    ['温度','−30 ℃ – +55 ℃（S-01 为 6 ℃）'],
+    ['风速','≤ 12 m/s（影响小型无人机中继）'],
+    ['地面状态','湿滑、结冰、涉水 ≤ 0.30 m']
+  ], req:'PR-01 检测 · PR-14 噪声与红外特征 · 能源与热管理',
+    fault:'逆光叠加烟尘、雨雾削弱激光回波——感知指标在包线边缘迅速劣化，虚警率上升。'},
+  L6:{n:'电磁与网联', en:'EM / CONNECTIVITY', cnt:7, els:[
+    ['链路可用性','≥ 1 条可用链路；中继可切换'],
+    ['端到端时延','≤ 200 ms（S-01 楼内 120 ms，峰值 900 ms）'],
+    ['干扰强度','窄带 / 宽带压制，按可用度分级'],
+    ['GNSS 状态','可用 / 压制 / 欺骗；拒止时长 ≤ 30 min'],
+    ['协同节点','≤ 16 节点；时间同步 ≤ 10 ms'],
+    ['频谱冲突','与己方电台、无人机图传的邻道干扰'],
+    ['指令完整性','签名、序号、时间戳，过期即丢弃']
+  ], req:'PR-09 通信 · SAF-05 失联安全状态 · SAF-10 指令签名',
+    fault:'混凝土遮挡导致链路断续、欺骗使定位跳变、旧指令晚到——控制链的每一段都可能失真。'}
+};
+
+const svg = $('#layerSvg');
+function renderLayer(id){
+  const L = LAYERS[id];
+  $('#lyId').textContent = id;
+  $('#lyName').textContent = L.n;
+  $('#lyCnt').textContent = L.cnt + ' ELEMENTS';
+  $('#lyKv').innerHTML = L.els.map(e=>kvRow(e[0], e[1])).join('');
+  $('#lyChips').innerHTML = `<div style="font-family:var(--mono);font-size:9px;letter-spacing:1.4px;color:var(--dim);margin-bottom:2px">PUSHES ON</div>` +
+    L.req.split(' · ').map(r=>`<span class="echip"><b>${r.split(' ')[0]}</b>${r.slice(r.indexOf(' ')+1)?' '+r.slice(r.indexOf(' ')+1):''}</span>`).join('');
+  $('#lyFault').textContent = L.fault;
+  $$('#layerSvg .lyr').forEach(g=>g.classList.toggle('on', g.dataset.layer===id));
+}
+$$('#layerSvg .lyr').forEach(g=>g.addEventListener('click', ()=>renderLayer(g.dataset.layer)));
+renderLayer('L1');
+
+/* ============ 数据：三个实例 ============ */
+const ICO = {
+  S1:`<svg viewBox="0 0 240 86"><g fill="none" stroke="rgba(90,140,160,.4)">
+    <path d="M20 74h200"/><rect x="58" y="26" width="86" height="48"/><path d="M58 42h86M58 58h86"/>
+    <path d="M118 74V62h10v-8h10v-8h10v-8h8" stroke="rgba(62,242,155,.7)"/>
+    <rect x="72" y="32" width="12" height="8" stroke="rgba(79,216,255,.6)"/>
+    <text x="150" y="34" fill="#5f7280" font-size="7" font-family="monospace">F3</text>
+    <text x="150" y="50" fill="#5f7280" font-size="7" font-family="monospace">F2</text>
+    <text x="150" y="66" fill="#5f7280" font-size="7" font-family="monospace">F1</text>
+    </g><circle cx="30" cy="74" r="3" fill="#3ef29b"/><path d="M30 74h22" stroke="rgba(62,242,155,.7)" stroke-dasharray="3 3"/></svg>`,
+  S2:`<svg viewBox="0 0 240 86"><g fill="none" stroke="rgba(90,140,160,.4)">
+    <path d="M10 74h220"/><path d="M20 74l58-46 46 46"/><path d="M84 74l56-34 54 34"/>
+    <path d="M96 74c14-12 26-20 44-28" stroke="rgba(62,242,155,.7)" stroke-dasharray="4 3"/>
+    </g><g stroke="rgba(90,140,160,.45)" fill="none">
+    <path d="M150 60v-10m-4 4l4-4 4 4"/><path d="M170 66v-8m-3 3l3-3 3 3"/></g>
+    <circle cx="60" cy="42" r="2.5" fill="#ffb454"/><path d="M60 42l22-8" stroke="rgba(255,180,84,.5)" stroke-dasharray="2 3"/>
+    <text x="86" y="30" fill="#5f7280" font-size="7" font-family="monospace">RIDGE 3.2 km</text></svg>`,
+  S3:`<svg viewBox="0 0 240 86"><g fill="none" stroke="rgba(90,140,160,.4)">
+    <path d="M10 74h220"/><rect x="40" y="46" width="34" height="18"/><rect x="84" y="48" width="30" height="16"/>
+    <rect x="124" y="50" width="26" height="14"/><circle cx="50" cy="66" r="4"/><circle cx="70" cy="66" r="4"/>
+    <circle cx="92" cy="66" r="3.6"/><circle cx="108" cy="66" r="3.6"/></g>
+    <g stroke="rgba(79,216,255,.55)"><path d="M150 20l-6 12M166 16l-6 12M182 24l-6 12M198 18l-6 12M214 26l-6 12"/></g>
+    <text x="150" y="46" fill="#5f7280" font-size="7" font-family="monospace">RAIN 8 mm/h</text>
+    <path d="M36 74h120" stroke="rgba(62,242,155,.6)" stroke-dasharray="3 3"/></svg>`
+};
+
+const SCEN = [
+  {id:'S-01', n:'城镇多层建筑逐屋清剿', key:true, ico:'S1', sub:'04:12–05:10 · 城东居民区 · 600 m',
+   brief:'从街面进入三层砖混住宅，逐层搜索，在三层窗口对街区目标实施指示。全程 600 m，任务时限 40 min。这是四个条件同时到位的场景：室内 GNSS 拒止、链路断续、人员近距离在场、几何连续变化。',
+   vals:[['L1','三层砖混，层高 3.0 m；楼梯 28°/踏步 160 mm；门洞 0.9 m；二层走廊台阶差 0.35 m；二层一侧楼板坍塌'],
+         ['L2','建筑图纸可用（精度 0.5 m）；室内 GNSS 不可用；楼间多路径；街区围栏已标定'],
+         ['L3','楼梯口堆杂物；二层坍塌区禁入；街面烟尘，入口能见度 80 m'],
+         ['L4','己方步兵 2 名在楼外 15 m；平民 1 名在二层房间；敌方 2 名在三层；无俘虏'],
+         ['L5','04:20 微光；能见度 80 m（烟尘）；温度 6 ℃；无降水；地面干燥'],
+         ['L6','楼内链路断续，RTT 120 ms（峰值 900 ms）；GNSS 拒止 26 min；协同节点 4']],
+   keys:['04:31 入口由轮行切腿行，用时 28 s','04:36 楼梯上行，限速 0.8 m/s','04:44 二层发现平民，暂停搜索并上报','04:52 三层窗口识别目标，C2 授权 38 s 闭环','05:06 撤出，弹药余量 62%、SOC 41%'],
+   req:'FR-07 / FR-08 · PR-03 / PR-05 / PR-06 · SAF-05 / SAF-07'},
+  {id:'S-02', n:'山地林区前沿侦察与目标指示', key:false, ico:'S2', sub:'05:00–07:30 · 山脊线 · 3.2 km',
+   brief:'沿山脊隐蔽机动 3.2 km 至观察位，对 800 m 外目标实施指示。晨雾、树冠遮挡、GNSS 压制与中继切换同时在路上，考核的是自主性与返航判断。',
+   vals:[['L1','土路与碎石混合；纵坡 22°–28°，横坡 8°；植被密度高，可通行宽度 1.2 m'],
+         ['L2','地图精度 5 m；树冠遮挡，天空视野角不足 20°；观察位坐标已知'],
+         ['L3','倒木与兽径；雨后泥泞；临时调整的射击扇区'],
+         ['L4','敌方观察哨 800 m；己方无人机担任中继；无平民'],
+         ['L5','晨雾，能见度 150 m；温度 2 ℃；湿度 95%；风速 6 m/s'],
+         ['L6','干扰强度中等；GNSS 压制 12 min；RTT 180 ms；中继切换 1 次，中断 45 s']],
+   keys:['05:24 进入林线，改腿行降低轮廓','06:02 GNSS 压制，转组合导航，漂移 0.9%','06:38 中继切换，链路中断 45 s，平台原地待机','07:05 观察位指示目标，坐标回传 2 次校验'],
+   req:'PR-03 / PR-04 / PR-09 · FR-06 自主返航 · SAF-05'},
+  {id:'S-03', n:'夜间雨雾伴随保障前送', key:false, ico:'S3', sub:'22:40–23:30 · 前沿补给线 · 2.4 km',
+   brief:'随同步兵班夜间前送弹药与电池 180 kg，抵达前沿补给点后换电返程。雨雾、泥泞、夜间编队，考核的是低附着路面与编队协同。',
+   vals:[['L1','泥泞土路与碎石；纵坡 12°，横坡 8°；涉水 0.2 m；附着系数约 0.45'],
+         ['L2','夜间地图可用；GNSS 可用但精度下降至 1.5 m；补给点坐标已知'],
+         ['L3','车辙积水；临时路障 1 处；前沿灯光管制'],
+         ['L4','步兵班 9 人随行；己方车辆 2 台；无敌方接触'],
+         ['L5','夜间；降雨 8 mm/h；能见度 60 m；温度 4 ℃；路面湿滑'],
+         ['L6','链路正常，RTT 90 ms；编队 4 节点；无干扰']],
+   keys:['22:40 编队出发，间距 25 m','23:06 通过积水路段，限速 4 km/h','23:22 抵达补给点，换电 5 min','23:30 返程，载重归零'],
+   req:'PR-04 / PR-10 / PR-13 · SAF-06 围栏 · FR-09 能源管理'}
+];
+
+const scnRow = $('#scnRow');
+SCEN.forEach((s,i)=>{
+  const d = el('div','scn'+(i===0?' on':''), `
+    <div class="top"><span class="sid">${s.id}</span>${s.key?'<span class="tag">典型 · 见 03</span>':''}</div>
+    <h3>${s.n}</h3>
+    <div class="sub">${s.sub}</div>
+    <div class="ico">${ICO[s.ico]}</div>`);
+  d.addEventListener('click', ()=>{ $$('#scnRow .scn').forEach(x=>x.classList.remove('on')); d.classList.add('on'); renderScn(i); });
+  scnRow.appendChild(d);
+});
+function renderScn(i){
+  const s = SCEN[i];
+  $('#spId').textContent = s.id;
+  $('#spName').textContent = s.n;
+  $('#spTag').textContent = s.key ? 'REFERENCE SCENARIO' : 'INSTANCE';
+  $('#spHead').textContent = s.brief;
+  $('#spVals').innerHTML = s.vals.map(v=>kvRow(v[0], v[1])).join('');
+  $('#spKeys').innerHTML = s.keys.map(k=>`<div style="padding:3px 0;border-bottom:1px solid var(--line)">· ${k}</div>`).join('');
+  $('#spReq').textContent = s.req;
+}
+renderScn(0);
+
+/* ============ 数据：时序 ============ */
+const PHASES = [
+  {t:'04:12', id:'T0', n:'受领与自检', mode:'M1 → M2',
+   act:'任务包校验，围栏与授权区加载；弹药、电池、载荷接口自检；轮腿机构动作一次确认。',
+   env:'街面待机点，操作员 1 名、指挥员 1 名在终端；步兵 2 名已就位。',
+   risk:'授权区与建筑轮廓的判读若偏差，后续目标都落在错误区内（R-04 前置条件）。'},
+  {t:'04:20', id:'T1', n:'街面接近', mode:'M2 轮行 8 km/h',
+   act:'沿街面 600 m 接近，避让瓦砾与残骸，感知在烟尘下降级，两次人工接管绕行。',
+   env:'烟尘，能见度 80 m；街面有碎石与断墙；GNSS 尚可用但多路径明显。',
+   risk:'感知置信度低时若维持速度，遇突发障碍制动距离不足（R-01 的室外版本）。'},
+  {t:'04:31', id:'T2', n:'入口转换', mode:'M2 → M4，28 s',
+   act:'门洞前停稳，轮腿切换，姿态包线校核，进入后按 0.5 m/s 腿行。',
+   env:'门洞 0.9 m，门槛 0.25 m；室内无 GNSS；入口烟尘最浓。',
+   risk:'切换卡滞或切换中位移，堵住唯一入口（R-05）。'},
+  {t:'04:36', id:'T3', n:'楼梯上行', mode:'M4 腿行 0.8 m/s',
+   act:'28° 楼梯上行，前视补光，逐段确认踏步完整性；在转角处停车重新建图。',
+   env:'楼梯宽 1.1 m，扶手缺失，堆有杂物；楼内链路开始断续。',
+   risk:'踏步边缘与杂物混淆，踏空或侧倾（R-01）；链路中断时停在楼梯中段（R-03）。'},
+  {t:'04:44', id:'T4', n:'二层搜索', mode:'M4 腿行 0.5 m/s',
+   act:'逐屋搜索，跨越 0.35 m 走廊台阶差；发现平民后停止推进、上报、等待指示。',
+   env:'二层一侧楼板坍塌（禁入）；平民 1 名在房间内；GNSS 拒止第 13 min。',
+   risk:'定位漂移导致错层判断（R-02）；平民突然移动造成识别与授权混淆（R-04）。'},
+  {t:'04:52', id:'T5', n:'三层指示', mode:'M4 静止 → M5',
+   act:'进入三层观察位，稳定平台，锁定 480 m 外目标，回传坐标与图像，等待 C2 授权后指示。',
+   env:'窗口逆光，目标部分遮挡；楼内 RTT 峰值 900 ms；操作员同时监督 2 台。',
+   risk:'授权链路过期或误判目标（R-08 / R-04）；操作员负荷接近上限（R-06）。'},
+  {t:'05:06', id:'T6', n:'撤出交接', mode:'M4 → M2 轮行',
+   act:'沿原路撤出，楼梯下行改为倒退腿行；出楼后切轮行，回传数据并交接。',
+   env:'烟尘略散，能见度 120 m；链路恢复；SOC 41%。',
+   risk:'下行时制动与附着不足（R-01 / R-07）；撤出路线被临时封控。'}
+];
+const phaseLine = $('#phaseLine');
+PHASES.forEach((p,i)=>{
+  const d = el('div','ph-node'+(i===0?' on':''), `<div class="pt">${p.t}</div><div class="pn">${p.id} ${p.n}</div>`);
+  d.addEventListener('click', ()=>{ $$('#phaseLine .ph-node').forEach(x=>x.classList.remove('on')); d.classList.add('on'); renderPhase(i); });
+  phaseLine.appendChild(d);
+});
+function renderPhase(i){
+  const p = PHASES[i];
+  $('#phId').textContent = p.id + ' · ' + p.t;
+  $('#phName').textContent = p.n;
+  $('#phMode').textContent = p.mode;
+  $('#phAct').textContent = p.act;
+  $('#phEnv').textContent = p.env;
+  $('#phRisk').textContent = p.risk;
+}
+renderPhase(0);
+
+/* ============ 数据：ODC ============ */
+const ODD = [
+  {id:'D1', nm:'纵坡', min:0, max:40, lo:0, hi:30, val:6, unit:'°', bad:34, badTxt:'纵坡 34° 超包线：退出腿行，改轮行绕行；无绕行路径则原地待机并请求人工决策。'},
+  {id:'D2', nm:'垂直台阶', min:0, max:0.6, lo:0, hi:0.4, val:0.35, unit:'m', bad:0.52, badTxt:'台阶 0.52 m 超包线：禁止直接攀越，改探测侧向通道；仍无通路则标记为不可通行。'},
+  {id:'D3', nm:'壕沟宽度', min:0, max:0.9, lo:0, hi:0.6, val:0, unit:'m', bad:null, na:true, badTxt:''},
+  {id:'D4', nm:'涉水深度', min:0, max:0.5, lo:0, hi:0.3, val:0, unit:'m', na:true, bad:0.42, badTxt:'涉水 0.42 m 超包线：停止涉水，改道或返回；密封与绝缘状态上报。'},
+  {id:'D5', nm:'通道净宽', min:0.4, max:2.4, lo:0.8, hi:2.4, val:0.9, unit:'m', bad:0.65, badTxt:'通道 0.65 m 不足：判定不可通行，禁止强行通过，记录为绕行点。'},
+  {id:'D6', nm:'能见度', min:0, max:400, lo:50, hi:400, val:80, unit:'m', bad:35, badTxt:'能见度 35 m：限速至 2 km/h，开启补光与近距感知，必要时停止推进。'},
+  {id:'D7', nm:'降雨强度', min:0, max:20, lo:0, hi:10, val:0, unit:'mm/h', bad:16, badTxt:'降雨 16 mm/h：降低越障等级，关闭非必要涉水，链路降级预案生效。'},
+  {id:'D8', nm:'环境温度', min:-40, max:65, lo:-30, hi:55, val:6, unit:'℃', bad:62, badTxt:'温度 62 ℃：电池与计算单元降频，任务时长按 60% 折算，持续监测热管理。'},
+  {id:'D9', nm:'GNSS 拒止时长', min:0, max:60, lo:0, hi:30, val:26, unit:'min', bad:45, badTxt:'拒止 45 min：定位不确定度超限，围栏改为保守膨胀并降速，超过 60 min 触发返航。'},
+  {id:'D10', nm:'链路中断时长', min:0, max:120, lo:0, hi:60, val:45, unit:'s', bad:95, badTxt:'中断 95 s：已达安全状态阈值，平台按 SAF-05 降速停车/返航，保险上锁。'}
+];
+const pct = (v,min,max) => Math.max(0, Math.min(100, (v-min)/(max-min)*100));
+function renderOdc(){
+  $('#odcRows').innerHTML = ODD.map(d=>`
+    <div class="odcrow${d.bad!==null&&!d.na?' bad':''}" data-id="${d.id}">
+      <div class="lb"><span class="id">${d.id}</span><span class="nm">${d.nm}</span></div>
+      <div class="track">
+        <div class="band" style="left:${pct(d.lo,d.min,d.max)}%;width:${pct(d.hi,d.min,d.max)-pct(d.lo,d.min,d.max)}%"></div>
+        ${d.na ? '' : `<div class="mk" data-val="${d.val}" data-bad="${d.bad===null?'':d.bad}" style="left:${pct(d.val,d.min,d.max)}%"></div>`}
+      </div>
+      <div class="val">${d.na ? '<span style="color:var(--dim)">未涉及</span>' : `${d.val}${d.unit} <span style="color:var(--dim)">/ ${d.lo}–${d.hi}</span>`}</div>
+      <div class="resp">${d.badTxt}</div>
+    </div>`).join('');
+}
+renderOdc();
+let odcBad = false;
+$('#odcBtn').addEventListener('click', ()=>{
+  odcBad = !odcBad;
+  $('#odcPanel').classList.toggle('bad', odcBad);
+  $('#odcBtn').textContent = odcBad ? '← 回到包线内' : '演示越界 →';
+  $$('#odcRows .odcrow').forEach((r,i)=>{
+    const mk = r.querySelector('.mk');
+    const d = ODD[i];
+    if (d.bad === null || d.na) return;
+    const v = odcBad ? d.bad : d.val;
+    mk.style.left = pct(v, d.min, d.max) + '%';
+    r.querySelector('.val').innerHTML = odcBad
+      ? `<span style="color:var(--alert)">${v}${d.unit}</span> <span style="color:var(--dim)">/ ${d.lo}–${d.hi}</span>`
+      : `${v}${d.unit} <span style="color:var(--dim)">/ ${d.lo}–${d.hi}</span>`;
+  });
+});
+
+/* ============ 数据：系统状态 / 人员状态 ============ */
+$('#sysKv').innerHTML = [
+  ['模式','M1 储运 / M2 轮行 / M3 待机 / M4 腿行 / M5 任务载荷；模式切换须状态确认，禁止跳变'],
+  ['健康','上电 BIT 通过；无 A 类故障；B 类故障 ≤2 项且不涉及感知、驱动、链路'],
+  ['能源','出发 SOC ≥30%；返航余量 ≥20%；换电 ≤5 min（2 人）'],
+  ['载荷','载荷配置自动识别；机械保险位置硬线回读；保险未解除不得进入 M5 打击链路'],
+  ['通信','至少 1 条链路可用且 RTT ≤200 ms；协同节点 ≤16；时间同步偏差 ≤10 ms']
+].map(r=>kvRow(r[0], r[1])).join('');
+
+$('#crewKv').innerHTML = [
+  ['操作员','持证上岗；连续操作 ≤2 h；接管反应 ≤5 s；城镇场景同时监督 ≤2 台'],
+  ['指挥员','在网且授权有效；交战授权一次性、可撤销；授权链路可追溯'],
+  ['伴随步兵','与平台保持 ≥5 m；位置共享开启；不得处于平台行进方向与射击扇区内'],
+  ['非战斗员','已清场或已标记；无法清场时禁止进入 M5 打击链路，只允许侦察与指示']
+].map(r=>kvRow(r[0], r[1])).join('');
+
+/* ============ 数据：风险场景 ============ */
+const RISKS = [
+  {id:'R-01', t:'楼梯边缘踏空导致倾覆', s:4, p:3, layer:'L1 / L5',
+   trig:'烟尘叠加窗口逆光，踏步边缘与杂物对比度低；前视被堆物遮挡，感知把首级踏步判成连续斜面。',
+   cons:'平台侧倾翻滚，堵死楼梯通道；伴随步兵被迫入楼施救（H-2 · L-1 / L-3）。',
+   ctl:'楼梯段限速 0.5 m/s；前视补光；姿态包线 12° 预警、18° 切断驱动；每 3 级停车复检。',
+   gap:'缺少踏步完整性检测，只按几何高度判断；需补「边缘置信度低于阈值即停」的规则。',
+   req:'PR-05 · SAF-07 · SAF-02', val:'试验'},
+  {id:'R-02', t:'室内定位漂移导致错层与围栏误判', s:3, p:4, layer:'L2 / L6',
+   trig:'GNSS 拒止 26 min，18 m 长走廊内组合导航漂移 1.8%；楼层高度相近，激光匹配把二层判为三层。',
+   cons:'平台进入未搜索房间，或在错误楼层报告位置，指挥员据此下达错误指令（H-6 · L-2）。',
+   ctl:'激光与视觉里程计回环；楼梯口设置人工确认点；围栏按定位不确定度保守膨胀 3 m。',
+   gap:'缺楼层判据（气压高度、楼层标识），层间切换没有强制重定位。',
+   req:'PR-03 · SAF-06 · FR-02', val:'试验'},
+  {id:'R-03', t:'楼内链路中断超过 60 s，平台停在楼梯中段', s:3, p:4, layer:'L6 / L1',
+   trig:'混凝土楼板遮挡，RTT 由 120 ms 抬到 900 ms 后超时；中继无人机同期被要求保持静默。',
+   cons:'平台在楼梯中段失去监督并阻碍通行；链路恢复后积压指令已过期（H-5 · L-1）。',
+   ctl:'断链 10 s 原地制动并以腿行支撑；45 s 自主退回最近确认点；60 s 进入安全状态。',
+   gap:'楼梯中段的「安全停放位」未定义，退回路径可能被杂物阻断。',
+   req:'PR-09 · SAF-05 · SAF-10', val:'演示'},
+  {id:'R-04', t:'目标识别误判（平民 / 己方）', s:5, p:2, layer:'L4 / L5',
+   trig:'窗口逆光，目标仅 40% 轮廓可见；平民从相邻窗口探头，与目标位置相差 1.2 m。',
+   cons:'对非目标实施打击或指示，造成平民伤亡或误伤己方（H-4 · L-2 / L-4）。',
+   ctl:'可见光与红外交叉；人在回路确认；双人授权；射击扇区与围栏联动。',
+   gap:'缺「相邻窗口人员」这类负样本，识别模型未覆盖该组合。',
+   req:'SAF-03 · SAF-04 · PR-01', val:'演示'},
+  {id:'R-05', t:'轮腿切换卡滞堵住唯一入口', s:3, p:3, layer:'L1 / L3',
+   trig:'门洞前地面有碎砖，切换时一侧轮组被垫起；28 s 内未到位，系统连续重试两次失败。',
+   cons:'平台横在门洞，队伍无法进入，只能人工搬移（H-2 · L-3）。',
+   ctl:'切换前检查地面平整度；失败自动回退轮行并请求人工；切换过程禁止人员靠近。',
+   gap:'缺少切换失败的自动复位路径，只能原地等待。',
+   req:'PR-06 · SAF-08', val:'试验'},
+  {id:'R-06', t:'操作员负荷超限，接管超时', s:3, p:3, layer:'L4 / L6',
+   trig:'同时监督 2 台，其中 1 台在二层报警；操作员正在处理目标指示，接管请求排队 8 s。',
+   cons:'异常平台保持原动作，越过台阶或进入禁入房间（H-2 · L-3）。',
+   ctl:'城镇场景限制同时监督 ≤2 台；告警分级；一键接管优先于任务操作。',
+   gap:'缺操作员负荷评估与自动降级，超限时不会自动收缩任务范围。',
+   req:'PR-13 · FR-04', val:'演示'},
+  {id:'R-07', t:'楼板或踏步坍塌', s:4, p:2, layer:'L1 / L3',
+   trig:'二层坍塌区边缘楼板承载不足，图纸未标注；平台按最短路径经过。',
+   cons:'平台坠落一层，任务中断并造成结构二次破坏（H-2 · L-1 / L-3）。',
+   ctl:'坍塌区设为禁入；沿承重墙一侧行进；先由小型探测器或无人机探路。',
+   gap:'缺楼板承载的在线估计，目前只靠图纸与目视判断。',
+   req:'PR-05 · 结构承载约束', val:'分析'},
+  {id:'R-08', t:'电磁干扰下执行过期指令', s:4, p:2, layer:'L6',
+   trig:'干扰导致重传，旧的速度与转向指令晚到 1.4 s；平台按先到的高优先级指令执行。',
+   cons:'平台在楼梯口执行已撤销的转向，撞墙或跌落（H-1 / H-2 · L-3）。',
+   ctl:'指令带序号与时间戳，超过 500 ms 即丢弃；切换采用先断后建 + 单主控令牌。',
+   gap:'安全通道内缺「指令时效」的独立校验，仍依赖任务计算机判断。',
+   req:'SAF-10 · SAF-02', val:'试验'}
+];
+const level = r => r.s*r.p >= 12 ? 'hi' : (r.s*r.p >= 6 ? 'mid' : 'lo');
+const levelTxt = r => r.s*r.p >= 12 ? '高风险' : (r.s*r.p >= 6 ? '中风险' : '低风险');
+
+/* 矩阵 */
+const rmx = $('#rmx'), rmxCells = {};
+rmx.appendChild(el('div','cx','P ↑<br>S →'));
+for (let s=1; s<=5; s++) rmx.appendChild(el('div','ax','S'+s));
+for (let p=5; p>=1; p--){
+  rmx.appendChild(el('div','ax y','P'+p));
+  for (let s=1; s<=5; s++){
+    const c = el('div','rc');
+    c.dataset.key = s + '-' + p;
+    const score = s*p;
+    const a = score>=12?.10:(score>=6?.05:.02);
+    const tint = score>=12?'255,90,90':(score>=6?'255,180,84':'62,242,155');
+    c.style.background = `rgba(${tint},${a})`;
+    c.addEventListener('click', ()=>filterByCell(s, p, c));
+    rmx.appendChild(c);
+    rmxCells[s+'-'+p] = c;
+  }
+}
+RISKS.forEach((r,i)=>{
+  const cell = rmxCells[r.s+'-'+r.p];
+  const same = RISKS.filter(x=>x.s===r.s && x.p===r.p);
+  const idx = same.findIndex(x=>x.id===r.id);
+  const n = same.length;
+  const left = n===1 ? 50 : 38 + idx*24;
+  const d = el('div','dot '+level(r), String(i+1));
+  d.style.left = left + '%'; d.style.top = '50%';
+  d.title = r.id + ' ' + r.t;
+  d.addEventListener('click', ev=>{ ev.stopPropagation(); selectRisk(r.id); });
+  cell.appendChild(d);
+});
+
+/* 详细卡片 */
+const riskList = $('#riskList');
+RISKS.forEach(r=>{
+  const card = el('div','risk', `
+    <div class="rh"><span class="rid">${r.id}</span><span class="rt">${r.t}</span><span class="rm">S${r.s}·P${r.p} · ${r.s*r.p}</span></div>
+    <div class="rsum">${r.trig}</div>
+    <div class="rb">
+      <span class="k2">TRIGGER · ${r.layer}</span><p>${r.trig}</p>
+      <span class="k2">CONSEQUENCE</span><p>${r.cons}</p>
+      <span class="k2">CONTROL</span><p>${r.ctl}</p>
+      <span class="k2">GAP</span><p style="color:#c9a3a3"><b style="color:var(--amber)">需补 · </b>${r.gap}</p>
+      <span class="k2">REQUIREMENTS</span><p style="font-family:var(--mono);font-size:10.5px;color:var(--cyan)">${r.req}</p>
+      <p style="font-family:var(--mono);font-size:9.5px;color:var(--dim);margin-top:4px">验证：${r.val} · 等级：${levelTxt(r)}</p>
+    </div>`);
+  card.dataset.id = r.id;
+  card.addEventListener('click', ()=>card.classList.toggle('on'));
+  riskList.appendChild(card);
+});
+
+function selectRisk(id){
+  $$('#riskList .risk').forEach(c=>c.classList.toggle('on', c.dataset.id===id));
+  const c = $$('#riskList .risk').find(x=>x.dataset.id===id);
+  if (c) c.scrollIntoView({behavior:'smooth', block:'center'});
+}
+function filterByCell(s, p, cell){
+  const on = cell.classList.contains('on');
+  $$('#rmx .rc').forEach(c=>c.classList.remove('on'));
+  if (on){
+    $$('#riskList .risk').forEach(c=>c.classList.remove('on'));
+    RenderMini(RISKS);
+    return;
+  }
+  cell.classList.add('on');
+  const set = RISKS.filter(r=>r.s===s && r.p===p);
+  $$('#riskList .risk').forEach(c=>c.classList.toggle('on', set.some(r=>r.id===c.dataset.id)));
+  RenderMini(set, `S${s} × P${p}`);
+}
+
+/* 侧栏简表 */
+function RenderMini(list, label){
+  $('#rCount').textContent = label ? `${list.length} / 8` : '8';
+  $('#riskMini').innerHTML = list.map(r=>`
+    <div class="risk" data-id="${r.id}" style="padding:7px 10px">
+      <div class="rh"><span class="rid">${r.id}</span><span class="rt" style="font-size:11.8px">${r.t}</span>
+      <span class="rm">${r.s*r.p}</span></div>
+    </div>`).join('') || '<div style="font-size:11.5px;color:var(--dim)">该格无风险场景</div>';
+  $$('#riskMini .risk').forEach(c=>{
+    c.addEventListener('click', ()=>{
+      const r = RISKS.find(x=>x.id===c.dataset.id);
+      selectRisk(r.id);
+      $$('#riskMini .risk').forEach(x=>x.style.borderColor='');
+      c.style.borderColor = 'var(--alert)';
+    });
+  });
+}
+RenderMini(RISKS);
+
+/* ============ 追溯表 ============ */
+const TRACE = [
+  ['S-01 楼梯 / 台阶','R-01 / R-05','PR-05 越障几何 · SAF-07 姿态包线 · SAF-02 独立监控','试验：楼梯与台阶组合台架，含杂物与逆光'],
+  ['S-01 室内拒止','R-02','PR-03 拒止漂移 · SAF-06 围栏保守膨胀 · FR-02 定位建图','试验：50 m 长走廊往返，记录漂移与楼层判定'],
+  ['S-01 楼内链路','R-03','PR-09 通信 · SAF-05 失联安全状态','演示：混凝土遮挡下切断链路 90 s'],
+  ['S-01 窗口识别','R-04','SAF-03 授权互锁 · SAF-04 目标确认链 · PR-01 检测','演示：平民与己方混入，人为注入 12 次'],
+  ['S-01 模式切换','R-05','PR-06 切换时间 · SAF-08 切换联锁','试验：30 次切换，含斜坡、门槛、碎石'],
+  ['S-01 操作员负荷','R-06','PR-13 监督台数 · FR-04 行为决策','演示：同时监督 3 台并注入接管请求'],
+  ['S-01 楼板承载','R-07','PR-05 · 结构承载约束（本轮新增）','分析：楼板承载核算 + 探测先行'],
+  ['S-02 电磁干扰','R-08','SAF-10 指令签名 · PR-09 通信','试验：干扰环境下重放旧指令']
+];
+$('#traceTbl').innerHTML = `<thead><tr><th>场景 / 要素</th><th>风险场景</th><th>牵引需求</th><th>验证方式</th></tr></thead><tbody>` +
+  TRACE.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('') + `</tbody>`;
+
+/* ============ 通用交互 ============ */
+const progress = $('#progress');
+const topBtn = $('#topBtn');
+const steps = $$('.step');
+const ids = steps.map(s=>s.dataset.target);
+function goTo(id){
+  const e = document.getElementById(id);
+  if (!e) return;
+  const top = e.getBoundingClientRect().top + window.scrollY - 84;
+  window.scrollTo({top, behavior:'smooth'});
+}
+steps.forEach(s=>s.addEventListener('click',()=>goTo(s.dataset.target)));
+let currentIdx = 0;
+window.addEventListener('scroll', ()=>{
+  const h = document.documentElement;
+  progress.style.width = (h.scrollTop/(h.scrollHeight-h.clientHeight)*100) + '%';
+  topBtn.classList.toggle('show', h.scrollTop > 600);
+  let cur = null, idx = 0;
+  ids.forEach((id,i)=>{
+    const e = document.getElementById(id);
+    if (e && e.getBoundingClientRect().top < 220){ cur = id; idx = i; }
+  });
+  currentIdx = idx;
+  steps.forEach(s=>s.classList.toggle('active', s.dataset.target===cur));
+}, {passive:true});
+topBtn.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+
+document.addEventListener('keydown', e=>{
+  if (e.target.tagName === 'INPUT') return;
+  const k = e.key.toLowerCase();
+  if (k==='j' || e.key==='ArrowDown'){ e.preventDefault(); goTo(ids[Math.min(currentIdx+1, ids.length-1)]); }
+  if (k==='k' || e.key==='ArrowUp'){ e.preventDefault(); goTo(ids[Math.max(currentIdx-1, 0)]); }
+});
+
+const io = new IntersectionObserver(entries=>{
+  entries.forEach(en=>{ if (en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
+}, {threshold:.08});
+$$('.reveal').forEach(e=>io.observe(e));
+setTimeout(()=>$$('.reveal:not(.in)').forEach(e=>e.classList.add('in')), 1200);
+</script>
+
+</body>
+</html>
